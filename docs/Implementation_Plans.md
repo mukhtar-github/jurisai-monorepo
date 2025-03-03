@@ -509,55 +509,49 @@ export default async function DocumentsPage() {
 #Insert in Terminal
 npm install @headlessui/react @heroicons/react
 ```
-#### 11. Deployment Configuration for Next.js on Railway:
+#### 11. Deployment Configuration for Next.js on Vercel:
 ```json
-// railway.json for frontend
+// vercel.json
 {
-  "version": 2,
+  "framework": "nextjs",
   "buildCommand": "cd apps/frontend && npm run build",
-  "startCommand": "cd apps/frontend && npm start",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/apps/frontend/$1"
-    }
-  ]
+  "outputDirectory": "apps/frontend/.next",
+  "installCommand": "cd apps/frontend && npm install",
+  "environment": {
+    "NEXT_PUBLIC_API_URL": "https://jurisai-backend.railway.app"
+  }
 }
 ```
-### AI Models Setup
-#### 1. Directory Structure:
-```bash
-cd /home/mukhtar-tanimu/jurisai-monorepo/libs/ai-models
-mkdir -p src/retrieval src/summarization src/ner
-```
-#### 2. Model Loading and Optimization:
-```python
-# src/core/model_loader.py
-import os
-import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import onnxruntime as ort
 
-def load_optimized_model(model_name, task="classification"):
-    # Check if ONNX version exists
-    onnx_path = f"models/{model_name}.onnx"
-    if os.path.exists(onnx_path):
-        # Load ONNX model for faster inference
-        session = ort.InferenceSession(onnx_path)
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        return {"session": session, "tokenizer": tokenizer, "type": "onnx"}
-    
-    # Fall back to regular PyTorch model
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    
-    # Optimize for inference
-    model.eval()
-    if torch.cuda.is_available():
-        model = model.cuda()
-        
-    return {"model": model, "tokenizer": tokenizer, "type": "pytorch"}
-```
+### Railway Deployment Strategy
+
+1. **Backend Setup**:
+   ```bash
+   # Create railway.json config for backend only
+   echo '{
+     "version": 2,
+     "build": {
+       "builder": "NIXPACKS",
+       "buildCommand": "cd apps/backend && poetry install"
+     },
+     "deploy": {
+       "startCommand": "cd apps/backend && uvicorn src.main:app --host 0.0.0.0 --port $PORT",
+       "healthcheckPath": "/health",
+       "restartPolicyType": "ON_FAILURE"
+     }
+   }' > railway.json
+   ```
+
+2. **Database Configuration**:
+   - Create Railway PostgreSQL plugin
+   - Set environment variables for database connection
+   - Run migrations during deployment
+
+3. **Cross-Platform Integration**:
+   - Configure CORS in FastAPI backend to allow requests from Vercel frontend
+   - Set up environment variables in Vercel to point to Railway backend
+   - Use Railway's provided PostgreSQL connection string in backend
+
 ## 2. Implementing Core Features
 ### Legal Research Assistant
 #### 1. Document Ingestion Pipeline:
@@ -1003,4 +997,3 @@ class ModelCache:
             
         self.redis.setex(cache_key, ttl, json.dumps(result))
 ```
-This comprehensive set of implementation plans covers the key aspects of the JurisAI project, from setting up individual components to implementing core features, planning the development phases, deploying the infrastructure, and optimizing the AI models. These plans align with the monorepo structure and the project's goals of creating a specialized legal AI assistant tailored for African jurisdictions.
