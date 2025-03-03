@@ -997,3 +997,117 @@ class ModelCache:
             
         self.redis.setex(cache_key, ttl, json.dumps(result))
 ```
+
+### It appears that we need to create the main.py file in the backend src directory first.
+Let me suggest a code implementation for this file:
+#### main.py
+```python
+"""
+Main application entry point for the JurisAI backend.
+"""
+import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import os
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# Create FastAPI application
+app = FastAPI(
+    title="JurisAI API",
+    description="API for JurisAI legal research and document management",
+    version="0.1.0",
+)
+
+# Configure CORS
+origins = [
+    "http://localhost:3000",  # Local frontend
+    "https://jurisai-frontend.vercel.app",  # Production frontend
+]
+
+if os.getenv("FRONTEND_URL"):
+    origins.append(os.getenv("FRONTEND_URL"))
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Root endpoint for health checks
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint for the API.
+    Returns:
+        dict: Status information
+    """
+    return {"status": "healthy", "version": app.version}
+
+# Import and include routers when they are created
+# from src.routes import documents, search, summarization
+
+# app.include_router(documents.router)
+# app.include_router(search.router)
+# app.include_router(summarization.router)
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("src.main:app", host="0.0.0.0", port=port, reload=True)
+```
+
+### For next steps:
+#### 1. Create the file:
+```bash
+/home/mukhtar-tanimu/jurisai-monorepo/apps/backend/src/main.py
+```
+with the code above.
+
+#### 2. Update your _pyproject.toml_ to include the additional dependencies:
+- Add _sqlalchemy_ for database ORM
+- Add _psycopg2-binary_ for PostgreSQL connection
+- Add _redis_ for caching
+
+### For the document model:
+#### 1. Creating a file:
+```bash
+/home/mukhtar-tanimu/jurisai-monorepo/apps/backend/src/models/document.py
+```
+with the following content:
+#### document.py
+```python
+"""
+Database models for legal documents.
+"""
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from src.core.database import Base
+
+class LegalDocument(Base):
+    """Legal document model for storing document metadata and content."""
+    
+    __tablename__ = "legal_documents"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), index=True)
+    content = Column(Text)
+    document_type = Column(String(50), index=True)
+    jurisdiction = Column(String(100), index=True)
+    publication_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships can be added here when we implement users
+    # owner_id = Column(Integer, ForeignKey("users.id"))
+    # owner = relationship("User", back_populates="documents")
+    ```
