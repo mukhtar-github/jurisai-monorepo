@@ -1,9 +1,6 @@
 """
-Document processing module for JurisAI.
-
-This module provides tools for processing legal documents.
+Document processing module for legal document handling.
 """
-
 from .processor import DocumentProcessor
 
 __all__ = ["DocumentProcessor"]

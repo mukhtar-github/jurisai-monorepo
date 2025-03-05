@@ -1,6 +1,15 @@
 """
-AI Models package for JurisAI.
-
-This package provides AI models and utilities for legal document processing,
-search, summarization, and more.
+JurisAI AI Models Library for legal document processing and analysis.
 """
+__version__ = "0.1.0"
+
+# Import and expose key modules
+from .retrieval import RAGPipeline
+from .summarization import LegalDocumentSummarizer
+from .document_processing import DocumentProcessor
+
+__all__ = [
+    "RAGPipeline",
+    "LegalDocumentSummarizer",
+    "DocumentProcessor",
+]

@@ -1,22 +1,26 @@
 [tool.poetry]
 name = "ai-models"
 version = "0.1.0"
-description = "AI Models for JurisAI"
-authors = ["Mukhtartg <mukhtartanimugarba@gmail.com>"]
-readme = "README.md"
+description = "AI models library for JurisAI"
+authors = ["JurisAI Team <team@jurisai.com>"]
+license = "Proprietary"
 
 [tool.poetry.dependencies]
-python = "^3.12"
-transformers = "^4.49.0"
-langchain = "^0.0.353"
-langchain-community = "^0.0.16"
+python = "^3.8"
+fastapi = "^0.95.0"
+transformers = "^4.27.4"
+torch = {version = "^2.0.0", source = "pypi-cpu"}
+langchain = "^0.1.0"
 faiss-cpu = "^1.7.4"
 sentence-transformers = "^2.2.2"
 pypdf2 = "^3.0.1"
-accelerate = "^0.27.2"
-torch = "^2.2.2"
-
+spacy = "^3.7.2"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.source]]
+name = "pypi-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
