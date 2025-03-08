@@ -1297,3 +1297,363 @@ async def get_batch_status(
         "completed_at": completed_at,
         "document_ids": [doc.id for doc in documents]
     }
+
+
+@router.post("/batch-export")
+async def export_batch_documents(
+    document_ids: List[int],
+    export_format: str = Query("json", description="Export format: json, csv, or txt"),
+    include_content: bool = Query(True, description="Whether to include document content"),
+    include_metadata: bool = Query(True, description="Whether to include document metadata"),
+    include_entities: bool = Query(False, description="Whether to include document entities"),
+    include_key_terms: bool = Query(False, description="Whether to include document key terms"),
+    db: Session = Depends(get_db)
+):
+    """
+    Export multiple documents in a batch.
+    
+    Args:
+        document_ids: List of document IDs to export
+        export_format: Format to export in (json, csv, or txt)
+        include_content: Whether to include document content
+        include_metadata: Whether to include document metadata
+        include_entities: Whether to include document entities
+        include_key_terms: Whether to include document key terms
+        db: Database session
+        
+    Returns:
+        dict or StreamingResponse: Exported documents in specified format
+    """
+    from fastapi.responses import StreamingResponse
+    import json
+    import csv
+    import io
+    
+    if not document_ids:
+        raise HTTPException(status_code=400, detail="No document IDs provided")
+    
+    # Query documents
+    documents = db.query(LegalDocument).filter(LegalDocument.id.in_(document_ids)).all()
+    if not documents:
+        raise HTTPException(status_code=404, detail="No documents found with the provided IDs")
+    
+    # Process documents
+    processed_docs = []
+    for doc in documents:
+        doc_data = {
+            "id": doc.id,
+            "title": doc.title,
+            "document_type": doc.document_type,
+            "jurisdiction": doc.jurisdiction,
+            "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
+            "word_count": doc.word_count
+        }
+        
+        if include_content:
+            doc_data["content"] = doc.content
+            
+        if include_metadata:
+            doc_data["metadata"] = doc.metadata
+            
+        if include_entities:
+            entities = db.query(DocumentEntity).filter(DocumentEntity.document_id == doc.id).all()
+            doc_data["entities"] = [
+                {
+                    "text": entity.text,
+                    "entity_type": entity.entity_type,
+                    "relevance": entity.relevance
+                }
+                for entity in entities
+            ]
+            
+        if include_key_terms:
+            key_terms = db.query(DocumentKeyTerm).filter(DocumentKeyTerm.document_id == doc.id).all()
+            doc_data["key_terms"] = [
+                {
+                    "term": term.term,
+                    "relevance": term.relevance,
+                    "frequency": term.frequency
+                }
+                for term in key_terms
+            ]
+        
+        processed_docs.append(doc_data)
+    
+    # Create export ID for tracking
+    export_id = f"export_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{hash(str(document_ids))}"
+    
+    # Export in the requested format
+    if export_format.lower() == "json":
+        # JSON export
+        export_data = json.dumps({
+            "export_id": export_id,
+            "export_date": datetime.utcnow().isoformat(),
+            "document_count": len(processed_docs),
+            "documents": processed_docs
+        }, indent=2)
+        
+        return StreamingResponse(
+            io.StringIO(export_data),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=jurisai_documents_{export_id}.json"
+            }
+        )
+        
+    elif export_format.lower() == "csv":
+        # CSV export - flatten nested data
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header row
+        headers = ["id", "title", "document_type", "jurisdiction", "created_at", "updated_at", "word_count"]
+        if include_content:
+            headers.append("content")
+        writer.writerow(headers)
+        
+        # Write data rows
+        for doc in processed_docs:
+            row = [
+                doc["id"],
+                doc["title"],
+                doc["document_type"],
+                doc["jurisdiction"],
+                doc["created_at"],
+                doc["updated_at"],
+                doc["word_count"]
+            ]
+            if include_content:
+                row.append(doc["content"])
+            writer.writerow(row)
+        
+        output.seek(0)
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=jurisai_documents_{export_id}.csv"
+            }
+        )
+        
+    elif export_format.lower() == "txt":
+        # Plain text export
+        output = io.StringIO()
+        for doc in processed_docs:
+            output.write(f"Document ID: {doc['id']}\n")
+            output.write(f"Title: {doc['title']}\n")
+            output.write(f"Type: {doc['document_type']}\n")
+            output.write(f"Jurisdiction: {doc['jurisdiction']}\n")
+            output.write(f"Created: {doc['created_at']}\n")
+            output.write(f"Updated: {doc['updated_at']}\n")
+            output.write(f"Word Count: {doc['word_count']}\n\n")
+            
+            if include_content:
+                output.write("CONTENT:\n")
+                output.write(f"{doc['content']}\n\n")
+                
+            if include_entities and "entities" in doc:
+                output.write("ENTITIES:\n")
+                for entity in doc["entities"]:
+                    output.write(f"{entity['text']} ({entity['entity_type']}) - Relevance: {entity['relevance']}\n")
+                output.write("\n")
+                
+            if include_key_terms and "key_terms" in doc:
+                output.write("KEY TERMS:\n")
+                for term in doc["key_terms"]:
+                    output.write(f"{term['term']} - Relevance: {term['relevance']}, Frequency: {term['frequency']}\n")
+                output.write("\n")
+                
+            output.write("------------------------------------------\n\n")
+            
+        output.seek(0)
+        return StreamingResponse(
+            output,
+            media_type="text/plain",
+            headers={
+                "Content-Disposition": f"attachment; filename=jurisai_documents_{export_id}.txt"
+            }
+        )
+    
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported export format. Supported formats: json, csv, txt")
+
+
+@router.post("/batch-analyze")
+async def batch_analyze_documents(
+    background_tasks: BackgroundTasks,
+    document_ids: List[int],
+    analysis_types: List[str] = Query(..., description="Types of analysis to perform: entities, key_terms, summary"),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze multiple documents in a batch.
+    
+    Args:
+        background_tasks: FastAPI background tasks handler
+        document_ids: List of document IDs to analyze
+        analysis_types: Types of analysis to perform
+        db: Database session
+        
+    Returns:
+        dict: Status of batch analysis operation
+    """
+    from src.services.document_processor import document_processor
+    
+    if not document_ids:
+        raise HTTPException(status_code=400, detail="No document IDs provided")
+        
+    if not analysis_types:
+        raise HTTPException(status_code=400, detail="No analysis types specified")
+    
+    # Validate analysis types
+    valid_types = {"entities", "key_terms", "summary"}
+    invalid_types = set(analysis_types) - valid_types
+    if invalid_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid analysis types: {', '.join(invalid_types)}. Valid types: {', '.join(valid_types)}"
+        )
+    
+    # Check if documents exist
+    existing_docs = db.query(LegalDocument.id).filter(LegalDocument.id.in_(document_ids)).all()
+    existing_ids = [doc.id for doc in existing_docs]
+    
+    if not existing_ids:
+        raise HTTPException(status_code=404, detail="No documents found with the provided IDs")
+        
+    missing_ids = set(document_ids) - set(existing_ids)
+    if missing_ids:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Documents not found: {', '.join(str(id) for id in missing_ids)}"
+        )
+    
+    # Create batch ID
+    batch_id = f"analysis_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{hash(str(document_ids))}"
+    
+    # Update document metadata with batch info
+    for doc_id in document_ids:
+        doc = db.query(LegalDocument).filter(LegalDocument.id == doc_id).first()
+        if not doc.metadata:
+            doc.metadata = {}
+        
+        # Add analysis batch information
+        if "analysis_batches" not in doc.metadata:
+            doc.metadata["analysis_batches"] = []
+            
+        doc.metadata["analysis_batches"].append({
+            "batch_id": batch_id,
+            "analysis_types": analysis_types,
+            "status": "queued",
+            "queued_at": datetime.utcnow().isoformat()
+        })
+        
+        db.add(doc)
+    
+    db.commit()
+    
+    # Process documents in background
+    def process_batch_analysis(document_ids, analysis_types, batch_id, db_url):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        import traceback
+        
+        # Create new db session
+        engine = create_engine(db_url)
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        db = SessionLocal()
+        
+        try:
+            for doc_id in document_ids:
+                try:
+                    # Get document
+                    doc = db.query(LegalDocument).filter(LegalDocument.id == doc_id).first()
+                    if not doc:
+                        continue
+                        
+                    # Update batch status to in progress
+                    for batch in doc.metadata.get("analysis_batches", []):
+                        if batch.get("batch_id") == batch_id:
+                            batch["status"] = "in_progress"
+                            batch["started_at"] = datetime.utcnow().isoformat()
+                    
+                    db.add(doc)
+                    db.commit()
+                    
+                    # Process analysis types
+                    if "entities" in analysis_types:
+                        entities = document_processor.extract_entities(doc.content)
+                        for entity in entities:
+                            db_entity = DocumentEntity(
+                                document_id=doc.id,
+                                text=entity["text"],
+                                entity_type=entity["type"],
+                                start_offset=entity.get("start"),
+                                end_offset=entity.get("end"),
+                                relevance=entity.get("relevance", 50)
+                            )
+                            db.add(db_entity)
+                    
+                    if "key_terms" in analysis_types:
+                        key_terms = document_processor.extract_key_terms(doc.content)
+                        for term in key_terms:
+                            db_term = DocumentKeyTerm(
+                                document_id=doc.id,
+                                term=term["term"],
+                                relevance=term.get("relevance", 50),
+                                frequency=term.get("frequency", 1)
+                            )
+                            db.add(db_term)
+                    
+                    if "summary" in analysis_types and document_processor.can_summarize():
+                        summary = document_processor.summarize_document(doc.content)
+                        doc.summary = summary
+                    
+                    # Update batch status to completed
+                    for batch in doc.metadata.get("analysis_batches", []):
+                        if batch.get("batch_id") == batch_id:
+                            batch["status"] = "completed"
+                            batch["completed_at"] = datetime.utcnow().isoformat()
+                    
+                    doc.metadata["analyzed_at"] = datetime.utcnow().isoformat()
+                    db.add(doc)
+                    db.commit()
+                    
+                except Exception as e:
+                    logging.error(f"Error analyzing document {doc_id}: {str(e)}")
+                    logging.error(traceback.format_exc())
+                    
+                    # Update batch status to failed
+                    doc = db.query(LegalDocument).filter(LegalDocument.id == doc_id).first()
+                    if doc:
+                        for batch in doc.metadata.get("analysis_batches", []):
+                            if batch.get("batch_id") == batch_id:
+                                batch["status"] = "failed"
+                                batch["error"] = str(e)
+                                batch["failed_at"] = datetime.utcnow().isoformat()
+                        
+                        db.add(doc)
+                        db.commit()
+        
+        except Exception as e:
+            logging.error(f"Batch analysis error: {str(e)}")
+            logging.error(traceback.format_exc())
+        finally:
+            db.close()
+    
+    # Start background task
+    background_tasks.add_task(
+        process_batch_analysis,
+        document_ids=document_ids,
+        analysis_types=analysis_types,
+        batch_id=batch_id,
+        db_url=str(db.bind.url)
+    )
+    
+    return {
+        "status": "Batch analysis started",
+        "batch_id": batch_id,
+        "document_count": len(document_ids),
+        "analysis_types": analysis_types
+    }
