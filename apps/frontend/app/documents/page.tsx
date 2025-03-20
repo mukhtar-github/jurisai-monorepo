@@ -3,321 +3,289 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-
-// Define types
-interface LegalDocument {
-  id: string;
-  title: string;
-  document_type: string;
-  jurisdiction: string;
-  publication_date: string;
-  created_at: string;
-}
+import { useDocumentList, useDocumentDelete, useBatchAnalyze } from '../../lib/hooks';
+import { useDocumentContext } from '../../lib/context/DocumentContext';
+import type { LegalDocument } from '../../lib/api/types';
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<LegalDocument[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [documentType, setDocumentType] = useState('');
   const [jurisdiction, setJurisdiction] = useState('');
-  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<number[]>([]);
   const [showBatchActions, setShowBatchActions] = useState(false);
-  
+
   const searchParams = useSearchParams();
   const documentIds = searchParams.get('ids');
 
+  // Use our custom hooks
+  const { 
+    data: documentsData, 
+    isLoading: loading, 
+    error: queryError,
+    refetch
+  } = useDocumentList({
+    document_type: documentType || undefined,
+    jurisdiction: jurisdiction || undefined,
+  });
 
-  // API URL (would normally be in env variables)
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const { 
+    selectedDocuments, 
+    setSelectedDocuments, 
+    addToSelection, 
+    removeFromSelection, 
+    clearSelection, 
+    isSelected 
+  } = useDocumentContext();
+
+  const { mutate: deleteDocument } = useDocumentDelete();
+  const { mutate: batchAnalyze } = useBatchAnalyze();
 
   useEffect(() => {
-    fetchDocuments();
-    
     // Check if document IDs were passed in URL params
     if (documentIds) {
-      const ids = documentIds.split(',');
-      setSelectedDocuments(ids);
+      const ids = documentIds.split(',').map(id => parseInt(id, 10));
+      setSelectedDocumentIds(ids);
       setShowBatchActions(ids.length > 0);
     }
   }, [documentIds]);
 
-  const fetchDocuments = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/documents`);
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-      const data = await response.json();
-      setDocuments(data);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to fetch documents:', err);
-      setError('Failed to load documents. Please try again later.');
-      // For development: Show sample data when API is not available
-      setDocuments([
-        {
-          id: '1',
-          title: 'Nigerian Constitution',
-          document_type: 'Constitution',
-          jurisdiction: 'Nigeria',
-          publication_date: '1999-05-29',
-          created_at: '2023-01-01T00:00:00',
-        },
-        {
-          id: '2',
-          title: 'Company and Allied Matters Act',
-          document_type: 'Act',
-          jurisdiction: 'Nigeria',
-          publication_date: '2020-08-07',
-          created_at: '2023-01-02T00:00:00',
-        },
-        {
-          id: '3',
-          title: 'Investment and Securities Act',
-          document_type: 'Act',
-          jurisdiction: 'Nigeria',
-          publication_date: '2007-05-25',
-          created_at: '2023-01-03T00:00:00',
-        },
-      ]);
-    } finally {
-      setLoading(false);
+  const handleSelectDocument = (document: LegalDocument) => {
+    if (isSelected(document.id)) {
+      removeFromSelection(document.id);
+    } else {
+      addToSelection(document);
+    }
+    updateSelectedIds();
+  };
+
+  const updateSelectedIds = () => {
+    const ids = selectedDocuments.map(doc => doc.id);
+    setSelectedDocumentIds(ids);
+    setShowBatchActions(ids.length > 0);
+  };
+
+  const handleSelectAll = () => {
+    if (documentsData?.items && selectedDocuments.length < documentsData.items.length) {
+      setSelectedDocuments(documentsData.items);
+    } else {
+      clearSelection();
+    }
+    updateSelectedIds();
+  };
+
+  const handleDeleteDocument = async (documentId: number) => {
+    if (confirm('Are you sure you want to delete this document?')) {
+      deleteDocument(documentId, {
+        onSuccess: () => {
+          refetch();
+        }
+      });
     }
   };
 
-  // Filter documents based on search and filters
-  const filteredDocuments = documents.filter((doc) => {
-    // If document IDs are provided and this document is not in the list, filter it out
-    if (documentIds && !documentIds.split(',').includes(doc.id)) {
-      return false;
-    }
-    
-    return (
-      doc.title.toLowerCase().includes(filter.toLowerCase()) &&
-      (documentType === '' || doc.document_type === documentType) &&
-      (jurisdiction === '' || doc.jurisdiction === jurisdiction)
-    );
-  });
-  
-  // Toggle document selection
-  const toggleDocumentSelection = (docId: string) => {
-    if (selectedDocuments.includes(docId)) {
-      setSelectedDocuments(selectedDocuments.filter(id => id !== docId));
-    } else {
-      setSelectedDocuments([...selectedDocuments, docId]);
-    }
+  const handleBatchAnalyze = () => {
+    batchAnalyze({
+      document_ids: selectedDocumentIds,
+      analysis_types: ['entities', 'key_terms', 'summary']
+    }, {
+      onSuccess: () => {
+        alert('Batch analysis started successfully!');
+      },
+      onError: (error) => {
+        alert(`Error starting batch analysis: ${error}`);
+      }
+    });
   };
-  
-  // Toggle batch actions visibility
-  const toggleBatchActions = () => {
-    setShowBatchActions(!showBatchActions);
-    if (!showBatchActions && selectedDocuments.length === 0) {
-      // If turning on batch mode but no documents are selected, select all visible ones
-      setSelectedDocuments(filteredDocuments.map(doc => doc.id));
-    } else if (!showBatchActions) {
-      // If turning off batch mode, clear selections
-      setSelectedDocuments([]);
-    }
-  };
-  
-  // Select or deselect all documents
-  const toggleSelectAll = () => {
-    if (selectedDocuments.length === filteredDocuments.length) {
-      setSelectedDocuments([]);
-    } else {
-      setSelectedDocuments(filteredDocuments.map(doc => doc.id));
-    }
-  };
+
+  const filteredDocuments = documentsData?.items?.filter(doc => 
+    doc.title.toLowerCase().includes(filter.toLowerCase()) ||
+    doc.document_type.toLowerCase().includes(filter.toLowerCase()) ||
+    doc.jurisdiction.toLowerCase().includes(filter.toLowerCase())
+  ) || [];
+
+  const error = queryError ? (queryError as Error).message : null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="text-2xl font-bold mb-4 md:mb-0">Legal Documents</h1>
-        <div className="flex flex-col md:flex-row gap-2">
-          <button 
-            onClick={toggleBatchActions}
-            className={`btn ${showBatchActions ? 'btn-success' : 'btn-secondary'}`}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Legal Documents</h1>
+        <Link href="/documents/batch-upload">
+          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            Upload Documents
+          </button>
+        </Link>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search documents..."
+            className="w-full p-2 border rounded"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+        <div className="flex-1">
+          <select
+            className="w-full p-2 border rounded"
+            value={documentType}
+            onChange={(e) => setDocumentType(e.target.value)}
           >
-            {showBatchActions ? 'Batch Mode: ON' : 'Batch Mode: OFF'}
-          </button>
-          <Link href="/documents/upload" className="btn btn-primary">
-            Upload Document
-          </Link>
-          <Link href="/documents/batch-upload" className="btn btn-primary">
-            Batch Upload
-          </Link>
+            <option value="">All Document Types</option>
+            {documentsData?.filters?.document_types?.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex-1">
+          <select
+            className="w-full p-2 border rounded"
+            value={jurisdiction}
+            onChange={(e) => setJurisdiction(e.target.value)}
+          >
+            <option value="">All Jurisdictions</option>
+            {documentsData?.filters?.jurisdictions?.map((jur) => (
+              <option key={jur} value={jur}>{jur}</option>
+            ))}
+          </select>
         </div>
       </div>
-      
-      {/* Batch actions */}
-      {showBatchActions && selectedDocuments.length > 0 && (
-        <div className="card p-4 mb-6 bg-blue-50">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <span className="font-medium">{selectedDocuments.length}</span> documents selected
-              <button 
-                onClick={toggleSelectAll} 
-                className="ml-4 text-blue-600 text-sm hover:underline"
-              >
-                {selectedDocuments.length === filteredDocuments.length ? 'Deselect All' : 'Select All'}
+
+      {showBatchActions && (
+        <div className="bg-gray-100 p-4 rounded-lg flex flex-col md:flex-row gap-2">
+          <span className="font-semibold">{selectedDocumentIds.length} documents selected</span>
+          <div className="flex gap-2 ml-auto">
+            <Link href={`/documents/batch-analyze?ids=${selectedDocumentIds.join(',')}`}>
+              <button className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm">
+                Analyze
               </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link 
-                href={`/documents/batch-export?ids=${selectedDocuments.join(',')}`}
-                className="btn btn-sm btn-secondary"
-              >
-                Export Selected
-              </Link>
-              <Link 
-                href={`/documents/batch-analyze?ids=${selectedDocuments.join(',')}`}
-                className="btn btn-sm btn-secondary"
-              >
-                Analyze Selected
-              </Link>
-            </div>
+            </Link>
+            <Link href={`/documents/batch-export?ids=${selectedDocumentIds.join(',')}`}>
+              <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                Export
+              </button>
+            </Link>
+            <button 
+              onClick={() => clearSelection()}
+              className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+            >
+              Clear Selection
+            </button>
           </div>
         </div>
-      )
+      )}
 
-      {/* Search and filters */}
-      <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="label" htmlFor="search">
-              Search
-            </label>
-            <input
-              id="search"
-              type="text"
-              className="input"
-              placeholder="Search documents..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="docType">
-              Document Type
-            </label>
-            <select
-              id="docType"
-              className="select"
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value)}
-            >
-              <option value="">All Types</option>
-              <option value="Constitution">Constitution</option>
-              <option value="Act">Act</option>
-              <option value="Regulation">Regulation</option>
-              <option value="Case Law">Case Law</option>
-              <option value="Treaty">Treaty</option>
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="jurisdiction">
-              Jurisdiction
-            </label>
-            <select
-              id="jurisdiction"
-              className="select"
-              value={jurisdiction}
-              onChange={(e) => setJurisdiction(e.target.value)}
-            >
-              <option value="">All Jurisdictions</option>
-              <option value="Nigeria">Nigeria</option>
-              <option value="Ghana">Ghana</option>
-              <option value="Kenya">Kenya</option>
-              <option value="South Africa">South Africa</option>
-            </select>
-          </div>
+      {/* Error and Loading States */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          Error: {error}
         </div>
-      </div>
+      )}
 
-      {/* Documents list */}
       {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="text-gray-500">Loading documents...</div>
-        </div>
-      ) : error ? (
-        <div className="card bg-red-50 text-red-700 p-4">{error}</div>
-      ) : filteredDocuments.length === 0 ? (
-        <div className="card p-8 text-center">
-          <p className="text-gray-500 mb-4">No documents found matching your criteria.</p>
-          <button onClick={fetchDocuments} className="btn btn-secondary">
-            Reset Filters
-          </button>
+        <div className="text-center py-10">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-2">Loading documents...</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full bg-white border rounded-lg">
             <thead className="bg-gray-100">
               <tr>
-                {showBatchActions && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedDocuments.length === filteredDocuments.length && filteredDocuments.length > 0}
-                      onChange={toggleSelectAll}
-                      className="rounded"
-                    />
-                  </th>
-                )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
+                <th className="py-2 px-4 text-left">
+                  <input 
+                    type="checkbox" 
+                    checked={documentsData?.items && selectedDocuments.length === documentsData.items.length}
+                    onChange={handleSelectAll}
+                  />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Jurisdiction
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="py-2 px-4 text-left">Title</th>
+                <th className="py-2 px-4 text-left">Type</th>
+                <th className="py-2 px-4 text-left">Jurisdiction</th>
+                <th className="py-2 px-4 text-left">Date</th>
+                <th className="py-2 px-4 text-left">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredDocuments.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50">
-                  {showBatchActions && (
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedDocuments.includes(doc.id)}
-                        onChange={() => toggleDocumentSelection(doc.id)}
-                        className="rounded"
-                      />
-                    </td>
-                  )}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link href={`/documents/${doc.id}`} className="text-blue-600 hover:underline font-medium">
-                      {doc.title}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.document_type}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.jurisdiction}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(doc.publication_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <Link href={`/documents/${doc.id}`} className="text-blue-600 hover:text-blue-900">
-                        View
-                      </Link>
-                      <span className="text-gray-300">|</span>
-                      <button className="text-red-600 hover:text-red-900">Delete</button>
-                    </div>
+            <tbody>
+              {filteredDocuments.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                    No documents found
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredDocuments.map((doc) => (
+                  <tr key={doc.id} className="border-t hover:bg-gray-50">
+                    <td className="py-2 px-4">
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected(doc.id)}
+                        onChange={() => handleSelectDocument(doc)}
+                      />
+                    </td>
+                    <td className="py-2 px-4 font-medium">
+                      <Link href={`/documents/${doc.id}`}>
+                        <span className="text-blue-600 hover:underline">{doc.title}</span>
+                      </Link>
+                    </td>
+                    <td className="py-2 px-4">{doc.document_type}</td>
+                    <td className="py-2 px-4">{doc.jurisdiction}</td>
+                    <td className="py-2 px-4">{new Date(doc.created_at).toLocaleDateString()}</td>
+                    <td className="py-2 px-4">
+                      <div className="flex space-x-2">
+                        <Link href={`/documents/${doc.id}/analyze`}>
+                          <button className="text-xs px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">
+                            Analyze
+                          </button>
+                        </Link>
+                        <Link href={`/documents/${doc.id}/export`}>
+                          <button className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">
+                            Export
+                          </button>
+                        </Link>
+                        <button 
+                          onClick={() => handleDeleteDocument(doc.id)} 
+                          className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!loading && documentsData?.total && documentsData.total > 0 && (
+        <div className="flex justify-between items-center mt-4">
+          <p className="text-gray-500">
+            Showing {filteredDocuments.length} of {documentsData.total} documents
+          </p>
+          <div className="flex space-x-2">
+            <button 
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+              disabled={documentsData.skip === 0}
+              onClick={() => {
+                /* Implement pagination */
+              }}
+            >
+              Previous
+            </button>
+            <button 
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+              disabled={(documentsData.skip + documentsData.limit) >= documentsData.total}
+              onClick={() => {
+                /* Implement pagination */
+              }}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
