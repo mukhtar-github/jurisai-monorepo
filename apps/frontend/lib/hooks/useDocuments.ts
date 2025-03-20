@@ -3,7 +3,7 @@
  */
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, Query } from '@tanstack/react-query';
 import {
   listDocuments,
   getDocument,
@@ -27,6 +27,7 @@ import type {
   BatchUploadParams,
   BatchAnalyzeParams,
   BatchExportParams,
+  BatchStatusResponse
 } from '../api/types';
 
 // Document list query hook
@@ -145,12 +146,13 @@ export function useBatchUpload() {
 
 // Batch status query hook
 export function useBatchStatus(batchId: string) {
-  return useQuery({
+  return useQuery<BatchStatusResponse>({
     queryKey: ['batch-status', batchId],
     queryFn: () => getBatchStatus(batchId),
     enabled: !!batchId,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Auto-refresh every 2 seconds until the batch is complete
+      const data = query.state.data;
       return data?.status === 'completed' || data?.status === 'failed' ? false : 2000;
     },
   });
