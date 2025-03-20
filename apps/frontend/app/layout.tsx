@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import RootProvider from "../lib/providers/RootProvider";
+import Notifications from "@/components/ui/Notifications";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
         <RootProvider>
+          <Notifications />
           <div className="flex h-screen overflow-hidden">
             {/* Sidebar - Will be replaced with a component */}
             <div className="w-64 bg-gray-900 text-white p-4 hidden md:block">

@@ -303,18 +303,19 @@ Now that we've completed most of the Week 2 tasks, we're ready to move on to Wee
 ### 2. Load Sample Legal Documents
 
 #### 2.1 Sample Data Creation
-- Gather 20-30 diverse Nigerian legal documents (statutes, case law, regulations)
+- Gather diverse Nigerian legal documents (statutes, case law, regulations)
 - Prepare metadata JSON for batch import
-- Create a script to clean and normalize documents
+- Create sample data with realistic Nigerian legal content
+- Implement a script for loading sample data into the database
 
 #### 2.2 Import Pipeline
-- Develop a CLI tool for bulk document import
+- Develop a tool for bulk document import
 - Create data validation and cleanup steps
 - Add logging for import process
 
 #### 2.3 Synthetic Data Generation
-- Create templates for generating synthetic legal documents
-- Implement scripts to produce variations with controlled parameters
+- Create templates for sample legal documents
+- Implement scripts to generate documents with controlled parameters
 - Generate test cases with known entities and key terms
 
 ### 3. Test End-to-End Functionality
