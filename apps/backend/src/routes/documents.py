@@ -1246,9 +1246,11 @@ async def get_batch_status(
     Returns:
         dict: Batch processing status information
     """
+    from sqlalchemy.dialects.postgresql import JSONB
+    from sqlalchemy import cast
     # Query documents with this batch ID in metadata
     documents = db.query(LegalDocument).filter(
-        LegalDocument.metadata.contains({"batch_id": batch_id})
+        cast(LegalDocument.doc_metadata, JSONB).op('->>')('batch_id') == batch_id
     ).all()
     
     if not documents:
@@ -1262,18 +1264,18 @@ async def get_batch_status(
     
     # Count documents by status
     total_docs = len(documents)
-    processed_docs = sum(1 for doc in documents if doc.metadata.get("processing_status") == "completed")
-    failed_docs = sum(1 for doc in documents if doc.metadata.get("processing_status") == "failed")
-    analyzed_docs = sum(1 for doc in documents if doc.metadata.get("analyzed_at") is not None)
+    processed_docs = sum(1 for doc in documents if doc.doc_metadata.get("processing_status") == "completed")
+    failed_docs = sum(1 for doc in documents if doc.doc_metadata.get("processing_status") == "failed")
+    analyzed_docs = sum(1 for doc in documents if doc.doc_metadata.get("analyzed_at") is not None)
     
     # Get earliest started_at timestamp
-    started_timestamps = [doc.metadata.get("processing_started") for doc in documents 
-                        if doc.metadata.get("processing_started")]
+    started_timestamps = [doc.doc_metadata.get("processing_started") for doc in documents 
+                        if doc.doc_metadata.get("processing_started")]
     started_at = min(started_timestamps) if started_timestamps else None
     
     # Get latest completed_at timestamp
-    completed_timestamps = [doc.metadata.get("processing_completed") for doc in documents 
-                         if doc.metadata.get("processing_completed")]
+    completed_timestamps = [doc.doc_metadata.get("processing_completed") for doc in documents 
+                         if doc.doc_metadata.get("processing_completed")]
     completed_at = max(completed_timestamps) if completed_timestamps and len(completed_timestamps) == total_docs else None
     
     # Determine overall status

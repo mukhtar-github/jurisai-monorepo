@@ -1,4 +1,7 @@
 import os
+# Set test mode environment variable before imports
+os.environ["TEST_MODE"] = "true"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine

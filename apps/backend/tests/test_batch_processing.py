@@ -6,11 +6,11 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from io import BytesIO
 from datetime import datetime
+import json
 
 from src.main import app
 from src.models.document import LegalDocument, DocumentEntity, DocumentKeyTerm
-
-client = TestClient(app)
+from tests.conftest import test_db, client
 
 @pytest.fixture
 def mock_db_session():
@@ -37,7 +37,7 @@ def sample_files():
     return [file1, file2]
 
 @patch("src.routes.documents.get_db")
-def test_batch_upload_documents(mock_get_db, mock_db_session, sample_files):
+def test_batch_upload_documents(mock_get_db, mock_db_session, sample_files, test_db):
     """Test the batch document upload endpoint."""
     mock_get_db.return_value = mock_db_session
     
@@ -67,7 +67,7 @@ def test_batch_upload_documents(mock_get_db, mock_db_session, sample_files):
     assert json_response["auto_analyze_enabled"] is False
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_pending(mock_get_db, mock_db_session):
+def test_batch_status_pending(mock_get_db, mock_db_session, test_db):
     """Test the batch status endpoint when no documents are found."""
     mock_get_db.return_value = mock_db_session
     
@@ -87,7 +87,7 @@ def test_batch_status_pending(mock_get_db, mock_db_session):
     assert json_response["started_at"] is None
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_in_progress(mock_get_db, mock_db_session):
+def test_batch_status_in_progress(mock_get_db, mock_db_session, test_db):
     """Test the batch status endpoint when processing is in progress."""
     mock_get_db.return_value = mock_db_session
     
@@ -127,7 +127,7 @@ def test_batch_status_in_progress(mock_get_db, mock_db_session):
     assert json_response["completed_at"] is None
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_completed(mock_get_db, mock_db_session):
+def test_batch_status_completed(mock_get_db, mock_db_session, test_db):
     """Test the batch status endpoint when processing is completed."""
     mock_get_db.return_value = mock_db_session
     
@@ -172,7 +172,7 @@ def test_batch_status_completed(mock_get_db, mock_db_session):
     assert json_response["document_ids"] == [1, 2]
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_failed(mock_get_db, mock_db_session):
+def test_batch_status_failed(mock_get_db, mock_db_session, test_db):
     """Test the batch status endpoint when processing has failed."""
     mock_get_db.return_value = mock_db_session
     
