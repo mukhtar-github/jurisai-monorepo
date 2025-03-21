@@ -13,7 +13,7 @@ def test_legal_document_creation(test_db):
         document_type="Case Law",
         jurisdiction="Nigeria",
         publication_date=datetime.utcnow(),
-        metadata={"source": "Test"}
+        doc_metadata={"source": "Test"}
     )
     
     # Add to database
@@ -28,7 +28,7 @@ def test_legal_document_creation(test_db):
     assert retrieved_doc.title == "Test Document"
     assert retrieved_doc.document_type == "Case Law"
     assert retrieved_doc.jurisdiction == "Nigeria"
-    assert retrieved_doc.metadata["source"] == "Test"
+    assert retrieved_doc.doc_metadata["source"] == "Test"
 
 def test_document_entity_relationship(test_db):
     """Test creating document entities linked to a document"""

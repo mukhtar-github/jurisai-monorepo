@@ -33,3 +33,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def create_tables():
+    """
+    Create all database tables.
+    This function is used during application startup.
+    """
+    # Import models to ensure they are registered with the Base class
+    # These imports need to be here to avoid circular import issues
+    from src.models.document import LegalDocument, DocumentEntity, DocumentKeyTerm
+    
+    # Create tables
+    Base.metadata.create_all(bind=engine)

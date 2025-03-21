@@ -1,7 +1,7 @@
 """
 Database models for legal documents.
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from src.core.database import Base
@@ -24,25 +24,29 @@ class LegalDocument(Base):
     word_count = Column(Integer, nullable=True)
     summary = Column(Text, nullable=True)
     
+    # Relationships
+    entities = relationship("DocumentEntity", back_populates="document", cascade="all, delete-orphan")
+    key_terms = relationship("DocumentKeyTerm", back_populates="document", cascade="all, delete-orphan")
+    
     # Relationships can be added here when we implement users
     # owner_id = Column(Integer, ForeignKey("users.id"))
     # owner = relationship("User", back_populates="documents")
 
 class DocumentEntity(Base):
-    """Model for storing extracted entities from legal documents."""
+    """Model for storing named entities extracted from documents."""
     
     __tablename__ = "document_entities"
     
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("legal_documents.id", ondelete="CASCADE"), index=True)
+    entity_type = Column(String(50))  # e.g., PERSON, ORGANIZATION, LOCATION
     entity_text = Column(String(255))
-    entity_type = Column(String(50), index=True)
-    start_pos = Column(Integer, nullable=True)
-    end_pos = Column(Integer, nullable=True)
-    relevance_score = Column(Integer, nullable=True)
+    start_position = Column(Integer, nullable=True)
+    end_position = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    document = relationship("LegalDocument")
+    # Relationship back to document
+    document = relationship("LegalDocument", back_populates="entities")
 
 class DocumentKeyTerm(Base):
     """Model for storing key legal terms extracted from documents."""
@@ -52,8 +56,9 @@ class DocumentKeyTerm(Base):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("legal_documents.id", ondelete="CASCADE"), index=True)
     term = Column(String(100))
-    relevance = Column(Integer, nullable=True)
+    relevance_score = Column(Float, nullable=True)
     frequency = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    document = relationship("LegalDocument")
+    # Relationship back to document
+    document = relationship("LegalDocument", back_populates="key_terms")
