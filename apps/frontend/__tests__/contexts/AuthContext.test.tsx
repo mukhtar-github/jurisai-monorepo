@@ -1,5 +1,6 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import { AuthProvider, useAuth } from '@/lib/context/AuthContext';
 
 // Mock localStorage
@@ -27,7 +28,7 @@ const TestComponent = () => {
       <div data-testid="auth-status">{isAuthenticated ? 'Authenticated' : 'Not Authenticated'}</div>
       {user && <div data-testid="user-name">{user.name}</div>}
       <button 
-        onClick={() => login({ email: 'test@example.com', password: 'password123' })} 
+        onClick={() => login('test@example.com', 'password123')} 
         data-testid="login-btn"
       >
         Login
@@ -103,7 +104,7 @@ describe('AuthContext', () => {
   });
 
   it('should persist auth state in localStorage', async () => {
-    renderWithProvider(<TestComponent />);
+    const { unmount } = renderWithProvider(<TestComponent />);
     
     // Login
     await userEvent.click(screen.getByTestId('login-btn'));
@@ -112,7 +113,7 @@ describe('AuthContext', () => {
     expect(window.localStorage.getItem('auth')).not.toBeNull();
     
     // Clear the rendered component
-    screen.unmount();
+    unmount();
     
     // Render again and check if state is restored from localStorage
     renderWithProvider(<TestComponent />);

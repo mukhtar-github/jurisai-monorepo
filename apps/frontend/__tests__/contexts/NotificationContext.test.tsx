@@ -1,5 +1,6 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import { NotificationProvider, useNotifications, useNotify } from '@/lib/context/NotificationContext';
 
 // A simple test component that uses the notifications context
