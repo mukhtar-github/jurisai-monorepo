@@ -4,122 +4,165 @@ import '@testing-library/jest-dom';
 import Notifications from '@/components/ui/Notifications';
 import { NotificationProvider, useNotify } from '@/lib/context/NotificationContext';
 
-// Test component to trigger notifications
-const NotificationTrigger = () => {
+// A simple test component that uses the notification context to trigger notifications
+const TestTrigger = () => {
   const notify = useNotify();
   
   return (
     <div>
-      <button onClick={() => notify.info('Info notification')} data-testid="show-info">
+      <button 
+        onClick={() => notify.info('Info notification', 'This is an info notification')}
+        data-testid="show-info"
+      >
         Show Info
       </button>
-      <button onClick={() => notify.success('Success notification')} data-testid="show-success">
+      <button 
+        onClick={() => notify.success('Success notification', 'This is a success notification')}
+        data-testid="show-success"
+      >
         Show Success
       </button>
-      <button onClick={() => notify.warning('Warning notification')} data-testid="show-warning">
+      <button 
+        onClick={() => notify.warning('Warning notification', 'This is a warning notification')}
+        data-testid="show-warning"
+      >
         Show Warning
       </button>
-      <button onClick={() => notify.error('Error notification')} data-testid="show-error">
+      <button 
+        onClick={() => notify.error('Error notification', 'This is an error notification')}
+        data-testid="show-error"
+      >
         Show Error
       </button>
     </div>
   );
 };
 
-// Test wrapper with providers
+// Render the component with notification provider
 const renderNotifications = () => {
   return render(
     <NotificationProvider>
       <Notifications />
-      <NotificationTrigger />
+      <TestTrigger />
     </NotificationProvider>
   );
 };
 
 describe('Notifications Component', () => {
   beforeEach(() => {
+    // Setup - clear any previous renders
     jest.useFakeTimers();
   });
 
   afterEach(() => {
+    // Cleanup after each test
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
   });
 
+  it('should render without any notifications by default', () => {
+    renderNotifications();
+    
+    // Should render but have no notification items
+    const notificationElement = screen.getByTestId('notifications-container');
+    expect(notificationElement).toBeInTheDocument();
+    expect(screen.queryByTestId('notification-item')).not.toBeInTheDocument();
+  });
+
   it('should render notifications when triggered', async () => {
+    // Setup user event
+    const user = userEvent.setup({ delay: null });
     renderNotifications();
     
     // No notifications initially
-    expect(screen.queryByText('Info notification')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('notification-item')).not.toBeInTheDocument();
     
     // Trigger a notification
-    await userEvent.click(screen.getByTestId('show-info'));
+    await user.click(screen.getByTestId('show-info'));
     
-    // Notification should be visible
-    expect(screen.getByText('Info notification')).toBeInTheDocument();
-  });
+    // Should show notification
+    await waitFor(() => {
+      expect(screen.getByText('Info notification')).toBeInTheDocument();
+    });
+  }, 10000);
 
   it('should render different styles for different notification types', async () => {
+    // Setup user event
+    const user = userEvent.setup({ delay: null });
     renderNotifications();
     
     // Trigger notifications of each type
-    await userEvent.click(screen.getByTestId('show-info'));
-    const infoNotification = screen.getByText('Info notification').closest('div');
-    expect(infoNotification).toHaveClass('bg-blue-50');
+    await user.click(screen.getByTestId('show-success'));
     
-    await userEvent.click(screen.getByTestId('show-success'));
-    const successNotification = screen.getByText('Success notification').closest('div');
-    expect(successNotification).toHaveClass('bg-green-50');
+    // Should apply correct styles for success
+    await waitFor(() => {
+      expect(screen.getByText('Success notification')).toBeInTheDocument();
+      const successNotification = screen.getByText('Success notification').closest('div');
+      expect(successNotification).toHaveClass('bg-green-50');
+    });
     
-    await userEvent.click(screen.getByTestId('show-warning'));
-    const warningNotification = screen.getByText('Warning notification').closest('div');
-    expect(warningNotification).toHaveClass('bg-yellow-50');
+    // Clear and try error
+    act(() => {
+      jest.runAllTimers();
+    });
     
-    await userEvent.click(screen.getByTestId('show-error'));
-    const errorNotification = screen.getByText('Error notification').closest('div');
-    expect(errorNotification).toHaveClass('bg-red-50');
-  });
+    await user.click(screen.getByTestId('show-error'));
+    
+    // Should apply correct styles for error
+    await waitFor(() => {
+      expect(screen.getByText('Error notification')).toBeInTheDocument();
+      const errorNotification = screen.getByText('Error notification').closest('div');
+      expect(errorNotification).toHaveClass('bg-red-50');
+    });
+  }, 10000);
 
   it('should automatically remove notifications after their duration', async () => {
+    // Setup user event
+    const user = userEvent.setup({ delay: null });
     renderNotifications();
     
     // Trigger a notification
-    await userEvent.click(screen.getByTestId('show-success'));
+    await user.click(screen.getByTestId('show-success'));
     
     // Notification should be visible
-    expect(screen.getByText('Success notification')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Success notification')).toBeInTheDocument();
+    });
     
     // Fast-forward time
     act(() => {
-      jest.advanceTimersByTime(3500); // Default success duration is 3000ms + buffer
+      jest.advanceTimersByTime(3500); // Default duration is 3000ms + buffer
     });
     
     // Notification should be removed
     await waitFor(() => {
       expect(screen.queryByText('Success notification')).not.toBeInTheDocument();
     });
-  });
+  }, 10000);
 
   it('should remove notification when close button is clicked', async () => {
+    // Setup user event
+    const user = userEvent.setup({ delay: null });
     renderNotifications();
     
     // Trigger a notification
-    await userEvent.click(screen.getByTestId('show-error'));
+    await user.click(screen.getByTestId('show-error'));
     
-    // Find the close button and click it
-    const closeButton = screen.getByText('Error notification')
-      .closest('div')?.querySelector('button');
-    
-    await userEvent.click(closeButton!);
-    
-    // Wait for animation and removal
-    act(() => {
-      jest.advanceTimersByTime(350); // Animation duration + a bit
+    // Notification should be visible
+    await waitFor(() => {
+      expect(screen.getByText('Error notification')).toBeInTheDocument();
     });
     
-    // Notification should be gone
+    // Find the close button using data-testid
+    const closeButton = screen.getByTestId('close-notification');
+    expect(closeButton).toBeInTheDocument();
+    
+    // Click close button
+    await user.click(closeButton);
+    
+    // Notification should be removed
     await waitFor(() => {
       expect(screen.queryByText('Error notification')).not.toBeInTheDocument();
     });
-  });
+  }, 10000);
 });

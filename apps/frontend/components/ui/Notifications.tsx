@@ -73,6 +73,8 @@ const NotificationToast = ({ notification, onClose }: { notification: Notificati
           <button
             className="inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
             onClick={handleClose}
+            aria-label="Close notification"
+            data-testid="close-notification"
           >
             <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
               <path

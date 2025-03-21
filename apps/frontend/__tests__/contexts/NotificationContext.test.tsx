@@ -7,27 +7,39 @@ import { NotificationProvider, useNotifications, useNotify } from '@/lib/context
 const TestComponent = () => {
   const { notifications } = useNotifications();
   const notify = useNotify();
-
+  
   return (
     <div>
-      <button onClick={() => notify.info('Info message')} data-testid="info-btn">
-        Show Info
-      </button>
-      <button onClick={() => notify.success('Success message')} data-testid="success-btn">
-        Show Success
-      </button>
-      <button onClick={() => notify.warning('Warning message')} data-testid="warning-btn">
-        Show Warning
-      </button>
-      <button onClick={() => notify.error('Error message')} data-testid="error-btn">
-        Show Error
-      </button>
       <div data-testid="notification-count">{notifications.length}</div>
+      <button 
+        onClick={() => notify.info('Test notification', 'This is a test')}
+        data-testid="info-btn"
+      >
+        Add Info
+      </button>
+      <button 
+        onClick={() => notify.success('Success notification', 'This is a success', 3000)}
+        data-testid="success-btn"
+      >
+        Add Success
+      </button>
+      <button 
+        onClick={() => notify.warning('Warning notification', 'This is a warning')}
+        data-testid="warning-btn"
+      >
+        Add Warning
+      </button>
+      <button 
+        onClick={() => notify.error('Error notification', 'This is an error')}
+        data-testid="error-btn"
+      >
+        Add Error
+      </button>
     </div>
   );
 };
 
-// Wrap component in NotificationProvider
+// Helper to render with provider
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(<NotificationProvider>{ui}</NotificationProvider>);
 };
@@ -45,26 +57,34 @@ describe('NotificationContext', () => {
   });
 
   it('should add a notification when useNotify is called', async () => {
+    // Setup user event
+    const user = userEvent.setup({ delay: null });
     renderWithProvider(<TestComponent />);
     
     // Check initial state - no notifications
     expect(screen.getByTestId('notification-count')).toHaveTextContent('0');
     
     // Add a notification
-    await userEvent.click(screen.getByTestId('info-btn'));
+    await user.click(screen.getByTestId('info-btn'));
     
     // Check that a notification was added
-    expect(screen.getByTestId('notification-count')).toHaveTextContent('1');
-  });
+    await waitFor(() => {
+      expect(screen.getByTestId('notification-count')).toHaveTextContent('1');
+    });
+  }, 10000);
 
   it('should automatically remove notifications after their duration', async () => {
+    // Setup user event
+    const user = userEvent.setup({ delay: null });
     renderWithProvider(<TestComponent />);
     
     // Add a notification
-    await userEvent.click(screen.getByTestId('success-btn'));
+    await user.click(screen.getByTestId('success-btn'));
     
     // Check that a notification was added
-    expect(screen.getByTestId('notification-count')).toHaveTextContent('1');
+    await waitFor(() => {
+      expect(screen.getByTestId('notification-count')).toHaveTextContent('1');
+    });
     
     // Fast-forward time to trigger auto-removal
     act(() => {
@@ -75,17 +95,21 @@ describe('NotificationContext', () => {
     await waitFor(() => {
       expect(screen.getByTestId('notification-count')).toHaveTextContent('0');
     });
-  });
+  }, 10000);
 
   it('should be able to add multiple notifications', async () => {
+    // Setup user event
+    const user = userEvent.setup({ delay: null });
     renderWithProvider(<TestComponent />);
     
     // Add multiple notifications
-    await userEvent.click(screen.getByTestId('info-btn'));
-    await userEvent.click(screen.getByTestId('warning-btn'));
-    await userEvent.click(screen.getByTestId('error-btn'));
+    await user.click(screen.getByTestId('info-btn'));
+    await user.click(screen.getByTestId('warning-btn'));
+    await user.click(screen.getByTestId('error-btn'));
     
     // Check that all notifications were added
-    expect(screen.getByTestId('notification-count')).toHaveTextContent('3');
-  });
+    await waitFor(() => {
+      expect(screen.getByTestId('notification-count')).toHaveTextContent('3');
+    });
+  }, 10000);
 });

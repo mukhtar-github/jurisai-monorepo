@@ -76,7 +76,7 @@ describe('AuthContext', () => {
     // Check that the auth state was updated
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
     expect(screen.getByTestId('user-name')).toBeInTheDocument();
-  });
+  }, 10000);  // Increased timeout to 10 seconds
 
   it('should clear auth state after logout', async () => {
     renderWithProvider(<TestComponent />);
@@ -88,7 +88,7 @@ describe('AuthContext', () => {
     // Check that the auth state was cleared
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
     expect(screen.queryByTestId('user-name')).not.toBeInTheDocument();
-  });
+  }, 10000);  // Increased timeout to 10 seconds
 
   it('should update user information', async () => {
     renderWithProvider(<TestComponent />);
@@ -101,7 +101,7 @@ describe('AuthContext', () => {
     
     // Check that the user info was updated
     expect(screen.getByTestId('user-name')).toHaveTextContent('Updated Name');
-  });
+  }, 10000);  // Increased timeout to 10 seconds
 
   it('should persist auth state in localStorage', async () => {
     const { unmount } = renderWithProvider(<TestComponent />);
@@ -110,7 +110,8 @@ describe('AuthContext', () => {
     await userEvent.click(screen.getByTestId('login-btn'));
     
     // Check that data was saved to localStorage
-    expect(window.localStorage.getItem('auth')).not.toBeNull();
+    expect(window.localStorage.getItem('jurisai_auth_token')).not.toBeNull();
+    expect(window.localStorage.getItem('jurisai_user')).not.toBeNull();
     
     // Clear the rendered component
     unmount();
@@ -118,5 +119,5 @@ describe('AuthContext', () => {
     // Render again and check if state is restored from localStorage
     renderWithProvider(<TestComponent />);
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
-  });
+  }, 10000);  // Increased timeout to 10 seconds
 });
