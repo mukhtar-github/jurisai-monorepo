@@ -97,8 +97,12 @@ describe('Notifications Component', () => {
     // Should apply correct styles for success
     await waitFor(() => {
       expect(screen.getByText('Success notification')).toBeInTheDocument();
-      const successNotification = screen.getByText('Success notification').closest('div');
-      expect(successNotification).toHaveClass('bg-green-50');
+      // Find the container that has the background color by finding the root notification div
+      const successNotification = screen.getByText('Success notification')
+        .closest('div.p-4')  // This is the inner flex div
+        ?.parentElement;     // The parent is the div with background styles
+      
+      expect(successNotification?.className).toContain('bg-green-50');
     });
     
     // Clear and try error
@@ -111,8 +115,12 @@ describe('Notifications Component', () => {
     // Should apply correct styles for error
     await waitFor(() => {
       expect(screen.getByText('Error notification')).toBeInTheDocument();
-      const errorNotification = screen.getByText('Error notification').closest('div');
-      expect(errorNotification).toHaveClass('bg-red-50');
+      // Find the container that has the background color
+      const errorNotification = screen.getByText('Error notification')
+        .closest('div.p-4')  // This is the inner flex div
+        ?.parentElement;     // The parent is the div with background styles
+      
+      expect(errorNotification?.className).toContain('bg-red-50');
     });
   }, 10000);
 

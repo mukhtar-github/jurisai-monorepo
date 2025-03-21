@@ -60,6 +60,7 @@ const NotificationToast = ({ notification, onClose }: { notification: Notificati
       className={`max-w-sm w-full border rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-in-out ${
         isExiting ? 'opacity-0 translate-x-full' : 'opacity-100'
       } ${backgrounds[notification.type]}`}
+      data-testid="notification-item"
     >
       <div className="p-4 flex items-start">
         <div className="flex-shrink-0">{icons[notification.type]}</div>
@@ -95,7 +96,7 @@ export default function Notifications() {
   const { notifications, removeNotification } = useNotifications();
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-4 w-full max-w-sm">
+    <div className="fixed top-4 right-4 z-50 space-y-4 w-full max-w-sm" data-testid="notifications-container">
       {notifications.map((notification) => (
         <NotificationToast
           key={notification.id}
