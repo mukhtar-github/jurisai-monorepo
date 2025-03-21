@@ -19,7 +19,7 @@ class LegalDocument(Base):
     publication_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    doc_metadata = Column(JSON, nullable=True)
     file_format = Column(String(10), nullable=True)
     word_count = Column(Integer, nullable=True)
     summary = Column(Text, nullable=True)
@@ -57,4 +57,3 @@ class DocumentKeyTerm(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     document = relationship("LegalDocument")
-
