@@ -1,17 +1,19 @@
 """
 Main FastAPI application entry point.
 """
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
+
 import logging
 import os
 from typing import List
 
-# Import routers
-from src.routes import documents, search, summarization, health
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Import database
 from src.core.database import create_tables
+
+# Import routers
+from src.routes import documents, health, search, summarization
 
 # Configure logging
 logging.basicConfig(
@@ -59,25 +61,33 @@ app.include_router(health.router)
 # Check for AI models
 try:
     from libs.ai_models import __version__ as ai_models_version
+
     logger.info(f"AI models library is available (version: {ai_models_version})")
-    
+
     # Try to load spaCy model if needed
     try:
         import spacy
+
         if not spacy.util.is_package("en_core_web_sm"):
-            logger.warning("spaCy model 'en_core_web_sm' not found. Will use basic NLP capabilities.")
-            logger.info("To install the model, run: python -m spacy download en_core_web_sm")
+            logger.warning(
+                "spaCy model 'en_core_web_sm' not found. Will use basic NLP capabilities."
+            )
+            logger.info(
+                "To install the model, run: python -m spacy download en_core_web_sm"
+            )
     except ImportError:
         logger.warning("spaCy not available. Advanced NLP features will be limited.")
-        
+
 except ImportError:
     logger.warning("AI models library not available. Using basic document processing.")
+
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and other resources on startup."""
     logger.info("Starting up JurisAI API")
     create_tables()
+
 
 @app.get("/", tags=["root"])
 async def read_root():
@@ -89,8 +99,9 @@ async def read_root():
         "docs_url": "/docs",
     }
 
+
 if __name__ == "__main__":
     import uvicorn
-    
+
     port = int(os.getenv("PORT", 8000))
     uvicorn.run("src.main:app", host="0.0.0.0", port=port, reload=True)

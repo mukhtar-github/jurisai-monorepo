@@ -1,12 +1,14 @@
 """
 Caching module for JurisAI backend using Redis.
 """
-import redis
-from functools import wraps
+
 import json
-import os
-from typing import Any, Callable, Dict, Optional
 import logging
+import os
+from functools import wraps
+from typing import Any, Callable, Dict, Optional
+
+import redis
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -18,10 +20,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 # Create Redis client with connection pooling for better performance
 try:
     redis_client = redis.Redis.from_url(
-        REDIS_URL,
-        socket_connect_timeout=5,
-        socket_timeout=5,
-        decode_responses=False
+        REDIS_URL, socket_connect_timeout=5, socket_timeout=5, decode_responses=False
     )
     # Test connection
     redis_client.ping()
@@ -30,47 +29,50 @@ except redis.ConnectionError as e:
     logger.warning(f"Redis connection failed: {e}. Cache will be disabled.")
     redis_client = None
 
+
 def cache_response(expire: int = 3600):
     """
     Decorator to cache API responses in Redis.
-    
+
     Args:
         expire (int): Cache expiration time in seconds. Defaults to 3600 (1 hour).
-    
+
     Returns:
         Callable: Decorated function
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def decorated_function(*args: Any, **kwargs: Any):
             # Skip caching if Redis is not available
             if redis_client is None:
                 return await func(*args, **kwargs)
-                
+
             try:
                 # Create cache key based on function name and arguments
-                request_path = kwargs.get('request_path', '')
+                request_path = kwargs.get("request_path", "")
                 # Include function name in the key for uniqueness
                 key = f"jurisai:cache:{func.__name__}:{request_path}:{json.dumps(kwargs, sort_keys=True)}"
-                
+
                 # Try to get response from cache
                 cached_response = redis_client.get(key)
                 if cached_response:
                     logger.debug(f"Cache hit for key: {key}")
                     return json.loads(cached_response)
-                
+
                 # Call original function if response not in cache
                 logger.debug(f"Cache miss for key: {key}")
                 response = await func(*args, **kwargs)
-                
+
                 # Cache the response
                 redis_client.setex(key, expire, json.dumps(response))
-                
+
                 return response
             except redis.RedisError as e:
                 # If Redis fails, just execute the function without caching
                 logger.error(f"Redis error during caching: {e}")
                 return await func(*args, **kwargs)
-                
+
         return decorated_function
+
     return decorator

@@ -1,0 +1,15 @@
+[flake8]
+max-line-length = 100
+exclude = .git,__pycache__,build,dist
+# E203: whitespace before ':' (conflicts with black)
+# W503: line break before binary operator (conflicts with black)
+# E231: missing whitespace after ',' (handled by black)
+# F401: unused imports (we'll fix these later)
+# F811: redefinition of unused name (we'll fix these later)
+# W293: blank line contains whitespace (handled by black)
+ignore = E203,W503,E231,W293
+per-file-ignores =
+    # Ignore unused imports in __init__.py files
+    **/__init__.py:F401,F403
+    # Ignore import redefinition in routes files as those may have complex imports
+    src/routes/*.py:F811,F401

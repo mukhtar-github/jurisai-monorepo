@@ -1,16 +1,19 @@
 """
 Tests for the batch document processing functionality.
 """
-import pytest
-from unittest.mock import patch, MagicMock
-from io import BytesIO
+
 import json
+from datetime import datetime, timezone
+from io import BytesIO
+from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi import status
-from datetime import timezone, datetime
 
 from src.main import app
 from src.models.document import LegalDocument
 from tests.conftest import client
+
 
 @pytest.fixture
 def sample_files():
@@ -20,6 +23,7 @@ def sample_files():
     file2 = BytesIO(b"This is the content of test file 2.")
     file2.name = "test2.txt"
     return [file1, file2]
+
 
 def test_batch_upload_documents(sample_files, client):
     """Test the batch document upload endpoint."""
@@ -34,8 +38,8 @@ def test_batch_upload_documents(sample_files, client):
             "document_type": "case_law",
             "jurisdiction": "US",
             "process_with_ai": "true",
-            "auto_analyze": "false"
-        }
+            "auto_analyze": "false",
+        },
     )
 
     # Assertions
@@ -48,6 +52,7 @@ def test_batch_upload_documents(sample_files, client):
     assert data["jurisdiction"] == "US"
     assert data["ai_processing_enabled"] is True
     assert data["auto_analyze_enabled"] is False
+
 
 # Create a separate test module for batch status endpoint testing
 @pytest.mark.skip(reason="Will be implemented as integration tests against PostgreSQL")

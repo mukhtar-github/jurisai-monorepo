@@ -1,9 +1,11 @@
 """
 Database configuration module for JurisAI backend.
 """
+
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-import os
 
 # Check if we're in test mode - this will be used by our test fixtures
 TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
@@ -24,7 +26,7 @@ else:
     HOST = os.environ.get("POSTGRES_HOST", "localhost")
     PORT = os.environ.get("POSTGRES_PORT", "5432")
     DATABASE = os.environ.get("POSTGRES_DB", "jurisai")
-    
+
     SQLALCHEMY_DATABASE_URL = f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}"
     # Create SQLAlchemy engine
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
@@ -36,10 +38,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Updated to use non-deprecated API
 Base = declarative_base()
 
+
 def get_db():
     """
     Dependency to get a database session.
-    
+
     Yields:
         SQLAlchemy Session: A database session
     """
@@ -49,6 +52,7 @@ def get_db():
     finally:
         db.close()
 
+
 def create_tables():
     """
     Create all database tables.
@@ -56,7 +60,7 @@ def create_tables():
     """
     # Import models to ensure they are registered with the Base class
     # These imports need to be here to avoid circular import issues
-    from src.models.document import LegalDocument, DocumentEntity, DocumentKeyTerm
-    
+    from src.models.document import DocumentEntity, DocumentKeyTerm, LegalDocument
+
     # Create tables
     Base.metadata.create_all(bind=engine)
