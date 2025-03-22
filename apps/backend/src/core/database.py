@@ -2,15 +2,14 @@
 Database configuration module for JurisAI backend.
 """
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 
 # Check if we're in test mode - this will be used by our test fixtures
-is_test_mode = os.getenv("TEST_MODE", "").lower() == "true"
+TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
 
 # Get database URL from environment variable or use a default for local development
-if is_test_mode:
+if TEST_MODE:
     # Use in-memory SQLite for tests
     SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
     # Create SQLAlchemy engine with SQLite-specific settings
@@ -20,10 +19,13 @@ if is_test_mode:
     )
 else:
     # Use PostgreSQL for production
-    SQLALCHEMY_DATABASE_URL = os.getenv(
-        "DATABASE_URL", 
-        "postgresql://postgres:postgres@localhost/jurisai"
-    )
+    USER = os.environ.get("POSTGRES_USER", "postgres")
+    PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
+    HOST = os.environ.get("POSTGRES_HOST", "localhost")
+    PORT = os.environ.get("POSTGRES_PORT", "5432")
+    DATABASE = os.environ.get("POSTGRES_DB", "jurisai")
+    
+    SQLALCHEMY_DATABASE_URL = f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}"
     # Create SQLAlchemy engine
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
@@ -31,6 +33,7 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create base class for declarative models
+# Updated to use non-deprecated API
 Base = declarative_base()
 
 def get_db():
