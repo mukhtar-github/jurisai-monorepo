@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.core.database import create_tables
 
 # Import routers
-from src.routes import documents, health, search, summarization
+from src.routes import documents, health, search, summarization, auth
 
 # Configure logging
 logging.basicConfig(
@@ -75,6 +75,7 @@ app.include_router(documents.router)
 app.include_router(search.router)
 app.include_router(summarization.router)
 app.include_router(health.router)
+app.include_router(auth.router)
 
 # Check for AI models
 try:
