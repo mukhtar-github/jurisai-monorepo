@@ -7,6 +7,8 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
+import { login as apiLogin, getCurrentUser } from '../api/auth';
+import apiClient from '../api/client';
 
 // Define user type
 export interface User {
@@ -55,19 +57,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Initialize auth state from localStorage on component mount
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
         const storedToken = localStorage.getItem(TOKEN_KEY);
         const storedUser = localStorage.getItem(USER_KEY);
 
         if (storedToken && storedUser) {
-          const user = JSON.parse(storedUser) as User;
-          setState({
-            user,
-            token: storedToken,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+          // Set the token in the API client for all future requests
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          
+          // Try to fetch the current user from API to validate token
+          try {
+            const user = await getCurrentUser();
+            setState({
+              user,
+              token: storedToken,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+          } catch (error) {
+            // Token might be invalid or expired, clear auth state
+            console.error('Error fetching user profile, token may be invalid:', error);
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+            setState({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+          }
         } else {
           setState((prev) => ({ ...prev, isLoading: false }));
         }
@@ -80,27 +99,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initializeAuth();
   }, []);
 
-  // Mock login function (replace with actual API call in production)
+  // Login function - now using the API
   const login = async (email: string, password: string) => {
     try {
-      // TODO: Replace with actual API call
-      // For now, simulate a successful login with mock data
-      const mockUser: User = {
-        id: '1',
-        name: 'Test User',
-        email,
-        role: 'user',
-      };
-      const mockToken = 'mock_jwt_token';
+      // Call the login API
+      const { user, token } = await apiLogin({ email, password });
+
+      // Set the token in the API client for all future requests
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       // Store in localStorage
-      localStorage.setItem(TOKEN_KEY, mockToken);
-      localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
 
       // Update state
       setState({
-        user: mockUser,
-        token: mockToken,
+        user,
+        token,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -115,6 +130,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Clear localStorage
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    
+    // Remove authorization header
+    delete apiClient.defaults.headers.common['Authorization'];
 
     // Reset state
     setState({
