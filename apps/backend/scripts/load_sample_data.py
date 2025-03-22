@@ -11,6 +11,9 @@ from pathlib import Path
 # Add the parent directory to sys.path to import from src
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Set TEST_MODE to true to use SQLite instead of PostgreSQL
+os.environ["TEST_MODE"] = "true"
+
 from sqlalchemy.orm import Session
 from src.core.database import SessionLocal, engine, Base
 from src.models.document import LegalDocument, DocumentEntity, DocumentKeyTerm
@@ -315,8 +318,7 @@ def add_sample_entities(db: Session, documents):
             entity_record = DocumentEntity(
                 document_id=doc.id,
                 entity_text=entity["entity_text"],
-                entity_type=entity["entity_type"],
-                relevance_score=entity["relevance_score"]
+                entity_type=entity["entity_type"]
             )
             db.add(entity_record)
         
