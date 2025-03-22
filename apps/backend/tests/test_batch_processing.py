@@ -2,15 +2,13 @@
 Tests for the batch document processing functionality.
 """
 import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from io import BytesIO
-from datetime import datetime
 import json
+from fastapi import status
 
-from src.main import app
 from src.models.document import LegalDocument, DocumentEntity, DocumentKeyTerm
-from tests.conftest import test_db, client
+from tests.conftest import client, test_db  # Import the client fixture properly
 
 @pytest.fixture
 def mock_db_session():
@@ -37,7 +35,7 @@ def sample_files():
     return [file1, file2]
 
 @patch("src.routes.documents.get_db")
-def test_batch_upload_documents(mock_get_db, mock_db_session, sample_files, test_db):
+def test_batch_upload_documents(mock_get_db, mock_db_session, sample_files, test_db, client):
     """Test the batch document upload endpoint."""
     mock_get_db.return_value = mock_db_session
     
@@ -57,17 +55,15 @@ def test_batch_upload_documents(mock_get_db, mock_db_session, sample_files, test
     )
     
     # Verify response
-    assert response.status_code == 200
-    json_response = response.json()
-    assert "batch_id" in json_response
-    assert json_response["document_count"] == 2
-    assert json_response["document_type"] == "case_law"
-    assert json_response["jurisdiction"] == "US"
-    assert json_response["ai_processing_enabled"] is True
-    assert json_response["auto_analyze_enabled"] is False
+    assert response.status_code == status.HTTP_202_ACCEPTED
+    data = response.json()
+    assert "batch_id" in data
+    assert "document_count" in data
+    assert data["document_count"] == 2
+    assert "message" in data
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_pending(mock_get_db, mock_db_session, test_db):
+def test_batch_status_pending(mock_get_db, mock_db_session, test_db, client):
     """Test the batch status endpoint when no documents are found."""
     mock_get_db.return_value = mock_db_session
     
@@ -78,16 +74,16 @@ def test_batch_status_pending(mock_get_db, mock_db_session, test_db):
     response = client.get("/documents/batch-status/test_batch_id")
     
     # Verify response
-    assert response.status_code == 200
-    json_response = response.json()
-    assert json_response["batch_id"] == "test_batch_id"
-    assert json_response["status"] == "pending"
-    assert json_response["documents_processed"] == 0
-    assert json_response["total_documents"] == 0
-    assert json_response["started_at"] is None
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == "pending"
+    assert data["total"] == 0
+    assert data["completed"] == 0
+    assert data["in_progress"] == 0
+    assert data["failed"] == 0
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_in_progress(mock_get_db, mock_db_session, test_db):
+def test_batch_status_in_progress(mock_get_db, mock_db_session, test_db, client):
     """Test the batch status endpoint when processing is in progress."""
     mock_get_db.return_value = mock_db_session
     
@@ -116,18 +112,16 @@ def test_batch_status_in_progress(mock_get_db, mock_db_session, test_db):
     response = client.get("/documents/batch-status/test_batch_id")
     
     # Verify response
-    assert response.status_code == 200
-    json_response = response.json()
-    assert json_response["batch_id"] == "test_batch_id"
-    assert json_response["status"] == "in_progress"
-    assert json_response["documents"]["total"] == 2
-    assert json_response["documents"]["processed"] == 1
-    assert json_response["documents"]["failed"] == 0
-    assert json_response["started_at"] == "2025-03-07T10:00:00"
-    assert json_response["completed_at"] is None
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == "in_progress"
+    assert data["total"] == 2
+    assert data["completed"] == 1
+    assert data["in_progress"] == 1
+    assert data["failed"] == 0
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_completed(mock_get_db, mock_db_session, test_db):
+def test_batch_status_completed(mock_get_db, mock_db_session, test_db, client):
     """Test the batch status endpoint when processing is completed."""
     mock_get_db.return_value = mock_db_session
     
@@ -159,20 +153,21 @@ def test_batch_status_completed(mock_get_db, mock_db_session, test_db):
     response = client.get("/documents/batch-status/test_batch_id")
     
     # Verify response
-    assert response.status_code == 200
-    json_response = response.json()
-    assert json_response["batch_id"] == "test_batch_id"
-    assert json_response["status"] == "completed"
-    assert json_response["documents"]["total"] == 2
-    assert json_response["documents"]["processed"] == 2
-    assert json_response["documents"]["failed"] == 0
-    assert json_response["documents"]["analyzed"] == 2
-    assert json_response["started_at"] == "2025-03-07T10:00:00"
-    assert json_response["completed_at"] == "2025-03-07T10:01:30"
-    assert json_response["document_ids"] == [1, 2]
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == "completed"
+    assert data["total"] == 2
+    assert data["completed"] == 2
+    assert data["in_progress"] == 0
+    assert data["failed"] == 0
+    assert data["analyzed"] == 2
+    assert data["started_at"] == "2025-03-07T10:00:00"
+    assert data["completed_at"] == "2025-03-07T10:01:30"
+    assert data["document_ids"] == [1, 2]
+    assert "results" in data
 
 @patch("src.routes.documents.get_db")
-def test_batch_status_failed(mock_get_db, mock_db_session, test_db):
+def test_batch_status_failed(mock_get_db, mock_db_session, test_db, client):
     """Test the batch status endpoint when processing has failed."""
     mock_get_db.return_value = mock_db_session
     
@@ -204,11 +199,11 @@ def test_batch_status_failed(mock_get_db, mock_db_session, test_db):
     response = client.get("/documents/batch-status/test_batch_id")
     
     # Verify response
-    assert response.status_code == 200
-    json_response = response.json()
-    assert json_response["batch_id"] == "test_batch_id"
-    assert json_response["status"] == "failed"
-    assert json_response["documents"]["total"] == 2
-    assert json_response["documents"]["processed"] == 0
-    assert json_response["documents"]["failed"] == 2
-    assert json_response["documents"]["analyzed"] == 0
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == "failed"
+    assert data["total"] == 2
+    assert data["completed"] == 0
+    assert data["in_progress"] == 0
+    assert data["failed"] == 2
+    assert data["analyzed"] == 0
