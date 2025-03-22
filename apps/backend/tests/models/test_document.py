@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -14,7 +14,7 @@ def test_legal_document_creation(test_db):
         content="This is a test document content",
         document_type="Case Law",
         jurisdiction="Nigeria",
-        publication_date=datetime.utcnow(),
+        publication_date=datetime.now(timezone.utc),
         doc_metadata={"source": "Test"},
     )
 
@@ -30,6 +30,7 @@ def test_legal_document_creation(test_db):
     # Assertions
     assert retrieved_doc is not None
     assert retrieved_doc.title == "Test Document"
+    assert retrieved_doc.content == "This is a test document content"
     assert retrieved_doc.document_type == "Case Law"
     assert retrieved_doc.jurisdiction == "Nigeria"
     assert retrieved_doc.doc_metadata["source"] == "Test"
