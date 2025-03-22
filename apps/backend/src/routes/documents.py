@@ -5,7 +5,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query, 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 import asyncio
@@ -328,7 +328,7 @@ async def upload_document(
             if not document.metadata:
                 document.metadata = {}
             
-            document.metadata["analyzed_at"] = datetime.utcnow().isoformat()
+            document.metadata["analyzed_at"] = datetime.now(timezone.utc).isoformat()
             document.metadata["analysis_stats"] = {
                 "entity_count": stored_entity_count,
                 "key_term_count": stored_term_count,
@@ -541,7 +541,7 @@ async def analyze_document(
             if not document.metadata:
                 document.metadata = {}
             
-            document.metadata["analyzed_at"] = datetime.utcnow().isoformat()
+            document.metadata["analyzed_at"] = datetime.now(timezone.utc).isoformat()
             document.metadata["analysis_stats"] = {
                 "entity_count": stored_entity_count,
                 "key_term_count": stored_term_count,
@@ -1057,7 +1057,7 @@ async def process_document_batch(files, document_type, jurisdiction, process_wit
                 # Create metadata with batch info
                 batch_metadata = {
                     "batch_id": batch_id,
-                    "processing_started": datetime.utcnow().isoformat(),
+                    "processing_started": datetime.now(timezone.utc).isoformat(),
                     "processing_status": "in_progress",
                     "file_name": file.filename
                 }
@@ -1104,7 +1104,7 @@ async def process_document_batch(files, document_type, jurisdiction, process_wit
                 
                 # Update processing status
                 document.metadata["processing_status"] = "completed"
-                document.metadata["processing_completed"] = datetime.utcnow().isoformat()
+                document.metadata["processing_completed"] = datetime.now(timezone.utc).isoformat()
                 
                 db.add(document)
                 db.commit()
@@ -1137,7 +1137,7 @@ async def process_document_batch(files, document_type, jurisdiction, process_wit
                             db.add(db_term)
                         
                         # Mark document as analyzed
-                        document.metadata["analyzed_at"] = datetime.utcnow().isoformat()
+                        document.metadata["analyzed_at"] = datetime.now(timezone.utc).isoformat()
                         db.commit()
                     except Exception as e:
                         logging.error(f"Auto-analysis failed for document {document.id}: {str(e)}")
@@ -1151,8 +1151,8 @@ async def process_document_batch(files, document_type, jurisdiction, process_wit
                 # Create failed document record
                 error_metadata = {
                     "batch_id": batch_id,
-                    "processing_started": datetime.utcnow().isoformat(),
-                    "processing_completed": datetime.utcnow().isoformat(),
+                    "processing_started": datetime.now(timezone.utc).isoformat(),
+                    "processing_completed": datetime.now(timezone.utc).isoformat(),
                     "processing_status": "failed",
                     "file_name": file.filename,
                     "error": str(e)
@@ -1206,7 +1206,7 @@ async def batch_upload_documents(
     if len(files) > 20:
         raise HTTPException(status_code=400, detail="Maximum 20 files can be uploaded in a batch")
     
-    batch_id = f"batch_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{hash(str(files))}"
+    batch_id = f"batch_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{hash(str(files))}"
     
     # Process documents in background
     background_tasks.add_task(
@@ -1383,14 +1383,14 @@ async def export_batch_documents(
         processed_docs.append(doc_data)
     
     # Create export ID for tracking
-    export_id = f"export_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{hash(str(document_ids))}"
+    export_id = f"export_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{hash(str(document_ids))}"
     
     # Export in the requested format
     if export_format.lower() == "json":
         # JSON export
         export_data = json.dumps({
             "export_id": export_id,
-            "export_date": datetime.utcnow().isoformat(),
+            "export_date": datetime.now(timezone.utc).isoformat(),
             "document_count": len(processed_docs),
             "documents": processed_docs
         }, indent=2)
@@ -1532,7 +1532,7 @@ async def batch_analyze_documents(
         )
     
     # Create batch ID
-    batch_id = f"analysis_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{hash(str(document_ids))}"
+    batch_id = f"analysis_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{hash(str(document_ids))}"
     
     # Update document metadata with batch info
     for doc_id in document_ids:
@@ -1548,7 +1548,7 @@ async def batch_analyze_documents(
             "batch_id": batch_id,
             "analysis_types": analysis_types,
             "status": "queued",
-            "queued_at": datetime.utcnow().isoformat()
+            "queued_at": datetime.now(timezone.utc).isoformat()
         })
         
         db.add(doc)
@@ -1578,7 +1578,7 @@ async def batch_analyze_documents(
                     for batch in doc.metadata.get("analysis_batches", []):
                         if batch.get("batch_id") == batch_id:
                             batch["status"] = "in_progress"
-                            batch["started_at"] = datetime.utcnow().isoformat()
+                            batch["started_at"] = datetime.now(timezone.utc).isoformat()
                     
                     db.add(doc)
                     db.commit()
@@ -1616,9 +1616,9 @@ async def batch_analyze_documents(
                     for batch in doc.metadata.get("analysis_batches", []):
                         if batch.get("batch_id") == batch_id:
                             batch["status"] = "completed"
-                            batch["completed_at"] = datetime.utcnow().isoformat()
+                            batch["completed_at"] = datetime.now(timezone.utc).isoformat()
                     
-                    doc.metadata["analyzed_at"] = datetime.utcnow().isoformat()
+                    doc.metadata["analyzed_at"] = datetime.now(timezone.utc).isoformat()
                     db.add(doc)
                     db.commit()
                     
@@ -1633,7 +1633,7 @@ async def batch_analyze_documents(
                             if batch.get("batch_id") == batch_id:
                                 batch["status"] = "failed"
                                 batch["error"] = str(e)
-                                batch["failed_at"] = datetime.utcnow().isoformat()
+                                batch["failed_at"] = datetime.now(timezone.utc).isoformat()
                         
                         db.add(doc)
                         db.commit()
