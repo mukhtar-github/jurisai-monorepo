@@ -4,6 +4,7 @@ Main FastAPI application entry point.
 
 import logging
 import os
+from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import Depends, FastAPI
@@ -36,11 +37,28 @@ origins = [
 if os.getenv("FRONTEND_URL"):
     origins.append(os.getenv("FRONTEND_URL"))
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Define startup and shutdown events for the application.
+    This replaces the deprecated on_event handlers.
+    """
+    # Startup actions
+    logger.info("Starting up JurisAI API")
+    create_tables()
+    
+    yield  # This yield separates startup from shutdown logic
+    
+    # Shutdown actions
+    logger.info("Shutting down JurisAI API")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="JurisAI API",
     description="Legal document management and analysis API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -80,13 +98,6 @@ try:
 
 except ImportError:
     logger.warning("AI models library not available. Using basic document processing.")
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and other resources on startup."""
-    logger.info("Starting up JurisAI API")
-    create_tables()
 
 
 @app.get("/", tags=["root"])
