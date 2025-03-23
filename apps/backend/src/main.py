@@ -71,11 +71,11 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(documents.router)
-app.include_router(search.router)
-app.include_router(summarization.router)
-app.include_router(health.router)
-app.include_router(auth.router)
+app.include_router(documents)
+app.include_router(search)
+app.include_router(summarization)
+app.include_router(health)
+app.include_router(auth)
 
 # Check for AI models
 try:
