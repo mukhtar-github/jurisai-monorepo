@@ -7,6 +7,9 @@ import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const TIMEOUT = 30000; // 30 seconds
 
+// Token storage keys (must match those in AuthContext)
+const TOKEN_KEY = 'jurisai_auth_token';
+
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -20,7 +23,7 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Add authorization header if token exists
-    const token = localStorage.getItem('jurisai_token');
+    const token = localStorage.getItem(TOKEN_KEY);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -43,21 +46,10 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      try {
-        // TODO: Implement token refresh logic when auth is implemented
-        // const refreshToken = localStorage.getItem('jurisai_refresh_token');
-        // const response = await apiClient.post('/auth/refresh', { refreshToken });
-        // localStorage.setItem('jurisai_token', response.data.token);
-        
-        // Return the original request with the new token
-        // return apiClient(originalRequest);
-      } catch (refreshError) {
-        // Clear tokens and redirect to login page
-        localStorage.removeItem('jurisai_token');
-        localStorage.removeItem('jurisai_refresh_token');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
+      // Clear tokens and redirect to login
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.href = '/login';
+      return Promise.reject(error);
     }
     
     // Handle other errors
