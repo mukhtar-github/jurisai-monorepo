@@ -52,6 +52,6 @@
     { "source": "/api/:path*", "destination": "/api/:path*" }
   ],
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://jurisai-backend.up.railway.app"
+    "NEXT_PUBLIC_API_URL": "https://postgres-production-b114.up.railway.app/"
   }
 }

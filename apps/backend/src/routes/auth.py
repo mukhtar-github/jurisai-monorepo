@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-import jwt
+from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
@@ -115,10 +115,10 @@ async def get_current_user(
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except jwt.PyJWTError:
+    except JWTError:
         raise credentials_exception
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -156,7 +156,7 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": new_user.id}, expires_delta=access_token_expires
+        data={"sub": str(new_user.id)}, expires_delta=access_token_expires
     )
     
     return {
@@ -182,7 +182,7 @@ async def login(
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.id}, expires_delta=access_token_expires
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
     
     return {
