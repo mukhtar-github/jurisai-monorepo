@@ -4,7 +4,10 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // API configuration
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const isDevelopment = process.env.NODE_ENV === 'development';
+// Default to localhost for development, and assume Railway URL format for production
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 
+  (isDevelopment ? 'http://localhost:8000' : 'https://jurisai-backend-production.up.railway.app');
 const TIMEOUT = 30000; // 30 seconds
 
 // Token storage keys (must match those in AuthContext)
