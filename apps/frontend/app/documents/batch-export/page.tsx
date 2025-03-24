@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function BatchExportPage() {
+// This component will use the useSearchParams hook
+function BatchExportContent() {
   const searchParams = useSearchParams();
   const documentIds = searchParams.get('ids') || '';
   const router = useRouter();
@@ -212,5 +213,14 @@ export default function BatchExportPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// Wrap the main component with Suspense to fix the error
+export default function BatchExportPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Loading batch export options...</div>}>
+      <BatchExportContent />
+    </Suspense>
   );
 }

@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// Removing Google Fonts import to fix build issues
+// import { Inter } from "next/font/google";
 import "./globals.css";
 import RootProvider from "../lib/providers/RootProvider";
 import Notifications from "@/components/ui/Notifications";
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+// Replace Google Font with a local font-family fallback
+// const inter = Inter({ 
+//   subsets: ["latin"],
+//   variable: "--font-inter",
+// });
 
 export const metadata: Metadata = {
   title: "JurisAI - Legal Assistant",
@@ -21,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} antialiased`}>
+      <body className="antialiased">
         <RootProvider>
           <Notifications />
           <div className="flex h-screen overflow-hidden">

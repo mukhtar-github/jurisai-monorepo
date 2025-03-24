@@ -15,7 +15,12 @@ logger = logging.getLogger(__name__)
 
 # Get Redis URL from environment variable or use a default for local development
 # Railway automatically provides REDIS_URL environment variable when using their Redis service
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL")
+if REDIS_URL:
+    logger.info(f"Using REDIS_URL from environment: {REDIS_URL}")
+else:
+    REDIS_URL = "redis://localhost:6379/0"
+    logger.warning(f"REDIS_URL not found in environment, using default: {REDIS_URL}")
 
 # Create Redis client with connection pooling for better performance
 try:

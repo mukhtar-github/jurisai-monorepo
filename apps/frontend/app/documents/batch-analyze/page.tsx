@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function BatchAnalyzePage() {
+// Inner component with useSearchParams
+function BatchAnalyzeContent() {
   const searchParams = useSearchParams();
   const documentIds = searchParams.get('ids') || '';
   const router = useRouter();
@@ -174,5 +175,14 @@ export default function BatchAnalyzePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// Wrapper component with Suspense
+export default function BatchAnalyzePage() {
+  return (
+    <Suspense fallback={<div className="p-8">Loading batch analyze options...</div>}>
+      <BatchAnalyzeContent />
+    </Suspense>
   );
 }

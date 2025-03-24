@@ -3,6 +3,7 @@ Database configuration module for JurisAI backend.
 """
 
 import os
+import logging
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -12,24 +13,32 @@ TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
 
 # Get database URL from environment variable or use a default for local development
 if TEST_MODE:
-    # Use in-memory SQLite for tests
     SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-    # Create SQLAlchemy engine with SQLite-specific settings
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         connect_args={"check_same_thread": False},
     )
 else:
-    # Use PostgreSQL for production
-    USER = os.environ.get("POSTGRES_USER", "postgres")
-    PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
-    HOST = os.environ.get("POSTGRES_HOST", "localhost")
-    PORT = os.environ.get("POSTGRES_PORT", "5432")
-    DATABASE = os.environ.get("POSTGRES_DB", "jurisai")
+    # First check if DATABASE_URL is directly provided
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    
+    if DATABASE_URL:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Using DATABASE_URL from environment: {DATABASE_URL}")
+        SQLALCHEMY_DATABASE_URL = DATABASE_URL
+        engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    else:
+        # Use PostgreSQL for production with individual connection parameters
+        USER = os.environ.get("POSTGRES_USER", "postgres")
+        PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
+        HOST = os.environ.get("POSTGRES_HOST", "localhost")
+        PORT = os.environ.get("POSTGRES_PORT", "5432")
+        DATABASE = os.environ.get("POSTGRES_DB", "jurisai")
 
-    SQLALCHEMY_DATABASE_URL = f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}"
-    # Create SQLAlchemy engine
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+        SQLALCHEMY_DATABASE_URL = f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}"
+        logger = logging.getLogger(__name__)
+        logger.warning(f"DATABASE_URL not found in environment, using constructed URL: {SQLALCHEMY_DATABASE_URL}")
+        engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

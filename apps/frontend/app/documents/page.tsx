@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useDocumentList, useDocumentDelete, useBatchAnalyze } from '../../lib/hooks';
 import { useDocumentContext } from '../../lib/context/DocumentContext';
 import type { LegalDocument } from '../../lib/api/types';
 
-export default function DocumentsPage() {
+// This component contains the useSearchParams hook
+function DocumentsContent() {
   const [filter, setFilter] = useState('');
   const [documentType, setDocumentType] = useState('');
   const [jurisdiction, setJurisdiction] = useState('');
@@ -289,5 +290,14 @@ export default function DocumentsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Main component wrapped with Suspense
+export default function DocumentsPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Loading documents...</div>}>
+      <DocumentsContent />
+    </Suspense>
   );
 }
