@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd apps/backend && python3 -m pip install -e ."
+
+[deploy]
+startCommand = "cd apps/backend && python3 -m gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
