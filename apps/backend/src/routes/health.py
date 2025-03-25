@@ -8,7 +8,10 @@ import time
 from typing import Any, Dict
 
 import psutil
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
+from sqlalchemy.orm import Session
+
+from src.core.database import get_db
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -95,4 +98,72 @@ async def ai_models_check() -> Dict[str, Any]:
     return {
         "status": "operational" if any(models_status.values()) else "limited",
         "models": models_status,
+    }
+
+
+@router.get("/database")
+async def database_check(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Check database connection status.
+
+    Args:
+        db (Session): Database session
+
+    Returns:
+        Dict[str, Any]: Database connection status
+    """
+    try:
+        # Try a simple query to verify database connection
+        db.execute("SELECT 1")
+        return {
+            "status": "connected",
+            "type": db.bind.dialect.name,
+            "message": "Database connection successful"
+        }
+    except Exception as e:
+        logging.error(f"Database connection error: {e}")
+        return {
+            "status": "error",
+            "message": f"Database connection failed: {str(e)}"
+        }
+
+
+@router.get("/full")
+async def full_health_check(
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Comprehensive health check of all system components.
+
+    Args:
+        db (Session): Database session
+
+    Returns:
+        Dict[str, Any]: Complete system health status
+    """
+    # Get basic health
+    basic_health = await health_check()
+    
+    # Get system info
+    sys_info = await system_info()
+    
+    # Get database status
+    db_status = await database_check(db)
+    
+    # Get AI models status
+    ai_status = await ai_models_check()
+    
+    # Determine overall status
+    overall_status = "healthy"
+    if db_status["status"] == "error":
+        overall_status = "degraded"
+    
+    return {
+        "status": overall_status,
+        "timestamp": time.time(),
+        "uptime": basic_health["uptime"],
+        "database": db_status,
+        "system": sys_info,
+        "ai_models": ai_status,
+        "version": "1.0.0"  # You might want to get this from a config file
     }

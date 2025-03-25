@@ -54,8 +54,31 @@ def test_batch_upload_documents(sample_files, client):
     assert data["auto_analyze_enabled"] is False
 
 
-# Create a separate test module for batch status endpoint testing
-@pytest.mark.skip(reason="Will be implemented as integration tests against PostgreSQL")
-def test_batch_status_endpoints():
-    """Placeholder for future integration tests against PostgreSQL."""
-    pass
+def test_batch_status(client, db):
+    """Test the batch status endpoint."""
+    # Create a mock batch_id
+    batch_id = f"batch_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_test"
+    
+    # Insert a test document with this batch_id for testing
+    document = LegalDocument(
+        title="Test Document",
+        content="Test content",
+        document_type="case_law",
+        jurisdiction="US",
+        batch_id=batch_id,
+        processing_status="completed"
+    )
+    db.add(document)
+    db.commit()
+    
+    # Call the batch status endpoint
+    response = client.get(f"/documents/batch-status/{batch_id}")
+    
+    # Assertions
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["batch_id"] == batch_id
+    assert "total_documents" in data
+    assert data["total_documents"] >= 1
+    assert "processed_documents" in data
+    assert "status" in data

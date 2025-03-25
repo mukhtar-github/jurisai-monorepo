@@ -13,6 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import database
 from src.core.database import create_tables
 
+# Import middleware
+from src.middleware import RequestLoggingMiddleware
+
 # Import routers
 from src.routes import documents, health, search, summarization, auth
 
@@ -60,6 +63,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Add middlewares
+app.add_middleware(RequestLoggingMiddleware)  # Add request logging middleware
 
 # Add CORS middleware
 app.add_middleware(

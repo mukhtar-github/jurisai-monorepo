@@ -6,7 +6,8 @@ import os
 import logging
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 # Check if we're in test mode - this will be used by our test fixtures
 TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
@@ -44,7 +45,7 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create base class for declarative models
-# Updated to use non-deprecated API
+# Updated to use non-deprecated API in SQLAlchemy 2.0
 Base = declarative_base()
 
 
