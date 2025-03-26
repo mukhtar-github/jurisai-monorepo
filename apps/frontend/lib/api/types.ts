@@ -165,3 +165,131 @@ export interface DocumentKeyTermsResponse {
     max_frequency: number;
   };
 }
+
+// Search response types
+export interface SearchResultResponse {
+  results: {
+    document: LegalDocument;
+    score: number;
+    highlights?: string[];
+    match_type?: string;
+  }[];
+  total: number;
+  query: string;
+  filters_applied: Record<string, string | boolean>;
+  execution_time: number;
+}
+
+export interface SimilarDocumentsResponse {
+  source_document: {
+    id: number;
+    title: string;
+  };
+  similar_documents: {
+    document: LegalDocument;
+    similarity_score: number;
+  }[];
+  total: number;
+}
+
+export interface SearchSuggestionsResponse {
+  query: string;
+  suggestions: string[];
+  document_types?: string[];
+  entity_types?: string[];
+  total: number;
+}
+
+// RAG (Retrieval-Augmented Generation) types
+export interface DocumentEmbeddingParams {
+  document_id: number;
+  model?: string;
+  chunk_size?: number;
+  chunk_overlap?: number;
+}
+
+export interface EmbeddingResponse {
+  document_id: number;
+  embedding_id: string;
+  chunk_count: number;
+  model: string;
+  status: string;
+  processing_time: number;
+}
+
+export interface SimilaritySearchParams {
+  query: string;
+  top_k?: number;
+  filter?: {
+    document_types?: string[];
+    jurisdictions?: string[];
+    date_range?: {
+      start_date?: string;
+      end_date?: string;
+    };
+  };
+  threshold?: number;
+}
+
+export interface SimilaritySearchResponse {
+  results: {
+    document: LegalDocument;
+    similarity: number;
+    chunk_text: string;
+    chunk_id: string;
+  }[];
+  total: number;
+  processing_time: number;
+}
+
+/**
+ * RAG query parameters
+ */
+export interface RAGQueryParams {
+  query: string;
+  context_docs?: number[];
+  max_docs?: number;
+  max_length?: number;
+  focus_areas?: string[];
+  document_ids?: number[];
+  model?: string;
+  temperature?: number;
+  filter?: {
+    document_types?: string[];
+    jurisdictions?: string[];
+  };
+  response_format?: 'text' | 'json' | 'markdown';
+  include_sources?: boolean;
+}
+
+/**
+ * RAG query response
+ */
+export interface RAGQueryResponse {
+  query?: string;
+  response: string;
+  source_documents?: {
+    document: LegalDocument;
+    relevance: number;
+    chunk_text: string;
+  }[];
+  sources?: {
+    document_id: number;
+    title?: string;
+    metadata?: string;
+  }[];
+  processing_time: number;
+  model?: string;
+}
+
+export interface VectorIndexStatusResponse {
+  total_documents: number;
+  total_chunks: number;
+  last_updated: string;
+  document_types: { document_type: string; count: number }[];
+  jurisdictions: { jurisdiction: string; count: number }[];
+  model_info: {
+    name: string;
+    dimensions: number;
+  };
+}
