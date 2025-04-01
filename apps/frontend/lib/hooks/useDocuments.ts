@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useQuery, useMutation, useQueryClient, Query } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listDocuments,
   getDocument,
@@ -33,6 +33,13 @@ import type {
   LegalDocument
 } from '../api/types';
 
+import { 
+  createQuery, 
+  createPaginatedQuery, 
+  createMutation
+} from './useQueryWithCache';
+import { CachePriority } from '@/lib/services/cacheService';
+
 // Document query key factories
 const documentKeys = {
   all: ['documents'] as const,
@@ -45,8 +52,8 @@ const documentKeys = {
   batchStatus: (batchId: string) => [...documentKeys.all, 'batch', batchId] as const,
 };
 
-// Document list query hook
-export function useDocumentList(params: DocumentListParams = {}) {
+// Document list query hook - Traditional implementation
+export function useDocumentListLegacy(params: DocumentListParams = {}) {
   return useQuery({
     queryKey: documentKeys.list(params),
     queryFn: () => listDocuments(params),
@@ -56,8 +63,14 @@ export function useDocumentList(params: DocumentListParams = {}) {
   });
 }
 
-// Document detail query hook
-export function useDocument(documentId: number, includeContent = true, includeMetadata = false) {
+// Enhanced document list query with advanced caching
+export const useDocumentList = createPaginatedQuery<DocumentListParams, DocumentListResponse>(
+  '/documents',
+  params => documentKeys.list(params)
+);
+
+// Document detail query - Traditional implementation
+export function useDocumentLegacy(documentId: number, includeContent = true, includeMetadata = false) {
   return useQuery({
     queryKey: [...documentKeys.detail(documentId), { includeContent, includeMetadata }],
     queryFn: () => getDocument(documentId, includeContent, includeMetadata),
@@ -67,8 +80,35 @@ export function useDocument(documentId: number, includeContent = true, includeMe
   });
 }
 
-// Document upload mutation hook
-export function useDocumentUpload() {
+// Enhanced document detail query with advanced caching
+export function useDocument(documentId: number, includeContent = true, includeMetadata = false) {
+  interface DocumentParams {
+    id: number;
+    includeContent: boolean;
+    includeMetadata: boolean;
+  }
+  
+  const useDocumentQuery = createQuery<DocumentParams, LegalDocument>(
+    `/documents/${documentId}`,
+    (params) => [...documentKeys.detail(params.id), { includeContent: params.includeContent, includeMetadata: params.includeMetadata }]
+  );
+  
+  return useDocumentQuery(
+    { id: documentId, includeContent, includeMetadata },
+    {
+      enabled: documentId > 0,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      cachePriority: CachePriority.HIGH,
+      cacheTags: [`document-${documentId}`],
+      // Important for UX: immediately show the previous document while loading
+      placeholderData: (previousData: LegalDocument | undefined) => previousData,
+    }
+  );
+}
+
+// Document upload mutation - Traditional implementation
+export function useDocumentUploadLegacy() {
   const queryClient = useQueryClient();
   
   return useMutation({
@@ -83,178 +123,117 @@ export function useDocumentUpload() {
   });
 }
 
-// Document analysis mutation hook
-export function useDocumentAnalysis() {
-  const queryClient = useQueryClient();
+// Enhanced document upload mutation with advanced cache invalidation
+export const useDocumentUpload = createMutation<DocumentUploadParams, LegalDocument>(
+  '/documents',
+  'post'
+);
+
+// Usage example:
+// const uploadMutation = useDocumentUpload({
+//   invalidateQueries: [documentKeys.lists()],
+//   invalidateTags: ['documents'],
+//   onSuccess: (data) => {
+//     console.log('Document uploaded successfully', data);
+//   }
+// });
+
+// Document analysis mutation - Enhanced with cache tags
+export const useDocumentAnalysis = createMutation<DocumentAnalysisParams, any>(
+  '/documents/analyze',
+  'post'
+);
+
+// Document deletion mutation - Enhanced with cache tags
+export const useDocumentDelete = createMutation<number, void>(
+  '/documents', // Will be appended with document ID
+  'delete'
+);
+
+// Document entities query - Enhanced with caching
+export function useDocumentEntities(documentId: number) {
+  const useEntitiesQuery = createQuery<{id: number}, any>(
+    `/documents/${documentId}/entities`,
+    params => documentKeys.entities(params.id)
+  );
   
-  return useMutation({
-    mutationFn: (params: DocumentAnalysisParams) => analyzeDocument(params),
-    onSuccess: (data, variables) => {
-      // Invalidate related document queries
-      queryClient.invalidateQueries({ queryKey: documentKeys.detail(variables.document_id) });
-      // Also invalidate any entities and key terms
-      queryClient.invalidateQueries({ queryKey: documentKeys.entities(variables.document_id) });
-      queryClient.invalidateQueries({ queryKey: documentKeys.keyTerms(variables.document_id) });
-      
-      // Directly update document in cache if possible
-      queryClient.setQueryData(
-        documentKeys.detail(variables.document_id),
-        (oldData: any) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            analyzed: true,
-            analysis_status: 'completed',
-            last_analyzed: new Date().toISOString(),
-          };
-        }
-      );
-    },
-  });
-}
-
-// Document delete mutation hook
-export function useDocumentDelete() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (documentId: number) => deleteDocument(documentId),
-    onSuccess: (_, documentId) => {
-      // Invalidate document lists
-      queryClient.invalidateQueries({ queryKey: documentKeys.lists() });
-      
-      // Remove the document from cache
-      queryClient.removeQueries({ queryKey: documentKeys.detail(documentId) });
-      
-      // Update any document lists in the cache
-      queryClient.setQueriesData(
-        { queryKey: documentKeys.lists() },
-        (oldData: any) => {
-          if (!oldData || !oldData.items) return oldData;
-          return {
-            ...oldData,
-            items: oldData.items.filter((doc: LegalDocument) => doc.id !== documentId),
-            total: oldData.total - 1,
-          };
-        }
-      );
-    },
-  });
-}
-
-// Document entities query hook
-export function useDocumentEntities(
-  documentId: number,
-  entityType?: string,
-  limit = 50,
-  offset = 0,
-  sortBy = 'relevance',
-  sortOrder: 'asc' | 'desc' = 'desc'
-) {
-  return useQuery({
-    queryKey: [...documentKeys.entities(documentId), { entityType, limit, offset, sortBy, sortOrder }],
-    queryFn: () => getDocumentEntities(documentId, entityType, limit, offset, sortBy, sortOrder),
-    enabled: documentId > 0,
-    staleTime: 10 * 60 * 1000, // 10 minutes - entities rarely change
-  });
-}
-
-// Document key terms query hook
-export function useDocumentKeyTerms(
-  documentId: number,
-  minRelevance?: number,
-  minFrequency?: number,
-  limit = 50,
-  offset = 0,
-  sortBy = 'relevance',
-  sortOrder: 'asc' | 'desc' = 'desc'
-) {
-  return useQuery({
-    queryKey: [...documentKeys.keyTerms(documentId), { minRelevance, minFrequency, limit, offset, sortBy, sortOrder }],
-    queryFn: () => getDocumentKeyTerms(documentId, minRelevance, minFrequency, limit, offset, sortBy, sortOrder),
-    enabled: documentId > 0,
-    staleTime: 10 * 60 * 1000, // 10 minutes - key terms rarely change
-  });
-}
-
-// Document search query hook
-export function useDocumentSearch(params: DocumentSearchParams) {
-  return useQuery({
-    queryKey: ['search', params],
-    queryFn: () => searchDocuments(params),
-    enabled: !!params.query && params.query.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-// Batch upload mutation hook
-export function useBatchUpload() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (params: BatchUploadParams) => batchUploadDocuments(params),
-    onSuccess: (data) => {
-      // After batch upload, start polling for status
-      queryClient.invalidateQueries({ queryKey: documentKeys.batchStatus(data.batch_id) });
-      
-      // Also invalidate document lists as they will change soon
-      queryClient.invalidateQueries({ queryKey: documentKeys.lists() });
-    },
-    retry: 1, // Only retry once for large uploads
-  });
-}
-
-// Batch status query hook with automatic polling
-export function useBatchStatus(batchId: string) {
-  return useQuery<BatchStatusResponse>({
-    queryKey: documentKeys.batchStatus(batchId),
-    queryFn: () => getBatchStatus(batchId),
-    enabled: !!batchId,
-    // Poll more frequently for active batches
-    refetchInterval: (query: Query<BatchStatusResponse, Error>) => {
-      // If complete or failed, stop polling
-      if (query.state.data?.status === 'completed' || query.state.data?.status === 'failed') {
-        return false;
-      }
-      // Otherwise poll every 3 seconds
-      return 3000;
-    },
-    staleTime: 0, // Always refetch when requested
-    // Stop polling when component unmounts
-    refetchIntervalInBackground: false,
-    // Use placeholderData instead of keepPreviousData
-    placeholderData: (previousData: BatchStatusResponse | undefined) => previousData,
-    // Prevent excessive back-to-back requests
-    retry: false,
-  });
-}
-
-// Batch export mutation hook
-export function useBatchExport() {
-  return useMutation({
-    mutationFn: (params: BatchExportParams) => exportBatchDocuments(params),
-  });
-}
-
-// Batch analyze mutation hook
-export function useBatchAnalyze() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (params: BatchAnalyzeParams) => batchAnalyzeDocuments(params),
-    onSuccess: (data, variables) => {
-      // Start polling batch status
-      queryClient.invalidateQueries({ queryKey: documentKeys.batchStatus(data.batch_id) });
-      
-      // Invalidate any affected document queries
-      if (variables.document_ids) {
-        variables.document_ids.forEach(id => {
-          queryClient.invalidateQueries({ queryKey: documentKeys.detail(id) });
-        });
-      }
-      
-      // Invalidate document lists as they will have updated status
-      queryClient.invalidateQueries({ queryKey: documentKeys.lists() });
+  return useEntitiesQuery(
+    { id: documentId },
+    {
+      enabled: documentId > 0,
+      staleTime: 15 * 60 * 1000, // 15 minutes
+      cachePriority: CachePriority.MEDIUM,
+      cacheTags: [`document-${documentId}`, 'entities'],
     }
-  });
+  );
 }
+
+// Document key terms query - Enhanced with caching
+export function useDocumentKeyTerms(documentId: number) {
+  const useKeyTermsQuery = createQuery<{id: number}, any>(
+    `/documents/${documentId}/key-terms`,
+    params => documentKeys.keyTerms(params.id)
+  );
+  
+  return useKeyTermsQuery(
+    { id: documentId },
+    {
+      enabled: documentId > 0,
+      staleTime: 15 * 60 * 1000, // 15 minutes
+      cachePriority: CachePriority.MEDIUM,
+      cacheTags: [`document-${documentId}`, 'key-terms'],
+    }
+  );
+}
+
+// Document search - Enhanced with caching
+export function useDocumentSearch(params: DocumentSearchParams) {
+  const useSearchQuery = createQuery<DocumentSearchParams, any>(
+    '/documents/search',
+    searchParams => ['documents', 'search', searchParams]
+  );
+  
+  return useSearchQuery(
+    params,
+    {
+      enabled: !!params.query && params.query.length > 2,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cachePriority: CachePriority.LOW, // Search results are less critical to persist
+      cacheTags: ['search-results'],
+    }
+  );
+}
+
+// Batch status query - Enhanced with frequent refreshing
+export function useBatchStatus(batchId: string) {
+  const useBatchStatusQuery = createQuery<{id: string}, BatchStatusResponse>(
+    `/documents/batch/${batchId}/status`,
+    params => documentKeys.batchStatus(params.id)
+  );
+  
+  return useBatchStatusQuery(
+    { id: batchId },
+    {
+      enabled: !!batchId,
+      // For batch processing, we want more frequent updates
+      refetchInterval: (query) => {
+        // Adjust polling frequency based on status
+        if (!query.state.data) return 2000; // Start with 2s when no data
+        const status = query.state.data.status;
+        if (status === 'completed' || status === 'failed') return false; // Stop polling
+        if (status === 'processing') return 3000; // Every 3s while processing
+        return 5000; // Default to 5s for other statuses
+      },
+      staleTime: 0, // Always consider batch status stale
+      cachePriority: CachePriority.MEDIUM,
+      cacheTags: [`batch-${batchId}`],
+    }
+  );
+}
+
+// Export the traditional hooks for backward compatibility
+export {
+  useDocumentListLegacy as useDocumentList_v3,
+  useDocumentLegacy as useDocument_v3,
+  useDocumentUploadLegacy as useDocumentUpload_v3,
+};
