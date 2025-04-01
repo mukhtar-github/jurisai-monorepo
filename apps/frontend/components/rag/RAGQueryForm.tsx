@@ -4,8 +4,14 @@ import { useState, useRef } from 'react';
 import { useRAGQuery, useOneTimeRAGQuery } from '@/lib/hooks/useRAG';
 import { RAGQueryParams } from '@/lib/api/types';
 import Markdown from 'react-markdown';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { 
+  generateRAGQueryPDF, 
+  downloadPDF 
+} from '@/lib/services/pdfService';
+import { 
+  showSuccess, 
+  showError 
+} from '@/lib/services/notificationService';
 
 interface RAGQueryFormProps {
   initialDocumentIds?: number[];
@@ -117,72 +123,19 @@ const RAGQueryForm = ({
         button.setAttribute('disabled', 'true');
       }
       
-      // Capture the content div
-      const canvas = await html2canvas(responseContentRef.current, {
-        scale: 2, // Higher resolution
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
+      // Generate PDF using our dedicated service
+      const pdf = await generateRAGQueryPDF(
+        responseContentRef.current,
+        queryParams.query,
+        result
+      );
       
-      const imgData = canvas.toDataURL('image/png');
+      // Download the PDF with a properly formatted filename
+      const filename = `jurisai-legal-query-response`;
+      downloadPDF(pdf, filename);
       
-      // Calculate PDF dimensions (A4 format)
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-      
-      // Calculate page dimensions for A4
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      // Add metadata
-      const now = new Date();
-      const title = `RAG Query Response - ${now.toLocaleDateString()}`;
-      pdf.setProperties({
-        title,
-        subject: queryParams.query,
-        author: 'JurisAI',
-        keywords: 'legal, rag, document',
-        creator: 'JurisAI Document System',
-      });
-      
-      // Add query and date to the PDF
-      pdf.setFontSize(16);
-      pdf.text('Query:', 20, 20);
-      
-      pdf.setFontSize(12);
-      // Handle long queries by wrapping text
-      const splitQuery = pdf.splitTextToSize(queryParams.query, 170);
-      pdf.text(splitQuery, 20, 30);
-      
-      const queryHeight = splitQuery.length * 6; // Estimate height based on number of lines
-      
-      pdf.setFontSize(10);
-      pdf.text(`Generated on: ${now.toLocaleString()}`, 20, 35 + queryHeight);
-      
-      // Add content image with pagination support
-      let heightLeft = imgHeight;
-      let position = 45 + queryHeight; // Start after the query text
-      let pageData = imgData;
-      
-      // Add first page
-      pdf.addImage(pageData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= (pageHeight - position);
-      
-      // Add additional pages if needed
-      while (heightLeft > 0) {
-        position = 0;
-        pdf.addPage();
-        pdf.addImage(pageData, 'PNG', 0, position - (pageHeight - 40), imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      
-      // Save the PDF
-      pdf.save(`rag-response-${now.getTime()}.pdf`);
+      // Show success notification
+      showSuccess('PDF successfully generated and downloaded');
       
       // Reset button state
       if (button) {
@@ -191,13 +144,16 @@ const RAGQueryForm = ({
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
+      
+      // Show error notification
+      showError('Failed to generate PDF. Please try again.');
+      
       // Reset button state
       const button = document.getElementById('download-pdf-button');
       if (button) {
         button.textContent = 'Download as PDF';
         button.removeAttribute('disabled');
       }
-      // Could add an error notification here
     }
   };
 
@@ -451,7 +407,7 @@ const RAGQueryForm = ({
                     <button
                       id="download-pdf-button"
                       onClick={handleDownloadPDF}
-                      className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                      className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
                     >
                       <svg 
                         xmlns="http://www.w3.org/2000/svg" 
@@ -472,28 +428,11 @@ const RAGQueryForm = ({
                   </div>
                 )}
                 
-                {/* Add ref to the response content */}
+                {/* Update ref to include both response and sources in the PDF content */}
                 <div className="markdown-content" ref={responseContentRef}>
                   {result.response ? 
                     <div>
                       <Markdown>{result.response}</Markdown>
-                      
-                      {/* Include sources section in the downloadable content */}
-                      {result.sources && result.sources.length > 0 && (
-                        <div className="mt-4 border-t border-gray-200 pt-4">
-                          <h4 className="text-sm font-semibold text-gray-700">Sources:</h4>
-                          <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-700">
-                            {result.sources.map((source, index) => (
-                              <li key={`source-${index}`}>
-                                <span className="font-medium">{source.title || `Document #${source.document_id}`}</span>
-                                {source.metadata && (
-                                  <span className="text-gray-500"> - {source.metadata}</span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div> : null
                   }
                 </div>
