@@ -1,0 +1,51 @@
+name: AI Models Tests
+
+on:
+  push:
+    branches: [ main, develop, master ]
+    paths:
+      - 'libs/ai-models/**'
+  pull_request:
+    branches: [ main, develop, master ]
+    paths:
+      - 'libs/ai-models/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.7.1
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: |
+        cd libs/ai-models
+        poetry install
+      
+    - name: Run tests
+      run: |
+        cd libs/ai-models
+        poetry run python -m pytest tests/ --cov=src
+        
+    - name: Validate model functionality
+      run: |
+        cd libs/ai-models
+        # Run sample model tests to validate basic functionality
+        poetry run python -c "
+        from src.advanced_features import JurisAIAdvanced
+        # Simple validation that the code imports correctly
+        ai = JurisAIAdvanced(use_fine_tuned=False)
+        print('Advanced AI features initialized successfully')
+        "

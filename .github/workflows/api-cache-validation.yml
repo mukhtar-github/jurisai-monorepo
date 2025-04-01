@@ -1,0 +1,49 @@
+name: API Cache Validation
+
+on:
+  push:
+    branches: [ main, develop, master ]
+    paths:
+      - 'apps/frontend/lib/services/cacheService.ts'
+      - 'apps/frontend/lib/hooks/useQueryWithCache.ts'
+      - 'apps/frontend/lib/api/client.ts'
+  pull_request:
+    branches: [ main, develop, master ]
+    paths:
+      - 'apps/frontend/lib/services/**'
+      - 'apps/frontend/lib/hooks/**'
+      - 'apps/frontend/lib/api/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        
+    - name: Install dependencies
+      run: |
+        cd apps/frontend
+        npm ci
+        
+    - name: Validate cache service
+      run: |
+        cd apps/frontend
+        # Create and run specific tests for the cache service
+        npm test -- --testPathPattern="services/cacheService|hooks/useQueryWithCache|api/client" --coverage
+        
+    - name: Lint code
+      run: |
+        cd apps/frontend
+        npm run lint -- --max-warnings=0
+        
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./apps/frontend/coverage
+        fail_ci_if_error: false
