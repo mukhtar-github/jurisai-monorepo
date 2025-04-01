@@ -2,6 +2,7 @@
  * API client for JurisAI backend services
  */
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import httpCache, { CachePriority } from '@/lib/services/cacheService';
 
 // Extend AxiosRequestConfig to include our custom properties
 declare module 'axios' {
@@ -9,6 +10,19 @@ declare module 'axios' {
     _retry?: boolean;
     _retryCount?: number;
     skipRetry?: boolean;
+    cacheOptions?: {
+      ttl?: number;
+      priority?: CachePriority;
+      forceRefresh?: boolean;
+      cacheTags?: string[];
+    };
+  }
+  
+  // Extend AxiosResponse to include our custom properties
+  export interface AxiosResponse<T = any> {
+    _fromCache?: boolean;
+    _stale?: boolean;
+    _fromPendingRequest?: boolean;
   }
 }
 
@@ -24,6 +38,9 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // milliseconds
 const RETRY_STATUS_CODES = [408, 429, 500, 502, 503, 504];
 
+// Cache configuration
+const DEFAULT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Token storage keys (must match those in AuthContext)
 const TOKEN_KEY = 'jurisai_auth_token';
 
@@ -38,18 +55,51 @@ const apiClient = axios.create({
 
 // Request interceptor
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Add authorization header if token exists
     const token = localStorage.getItem(TOKEN_KEY);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Add cache busting for GET requests when needed
-    if (config.method?.toLowerCase() === 'get' && config.params?.noCacheMode) {
-      const timestamp = new Date().getTime();
-      config.params = { ...config.params, _t: timestamp };
-      delete config.params.noCacheMode;
+    // Only apply caching for GET requests
+    if (config.method?.toLowerCase() === 'get') {
+      const url = config.url || '';
+      const params = config.params || {};
+      
+      // Skip cache if forceRefresh is set
+      if (config.cacheOptions?.forceRefresh !== true) {
+        // Check for pending request with same parameters
+        const pendingRequest = httpCache.getPendingRequest(url, params);
+        if (pendingRequest) {
+          // Return the existing request to avoid duplicates
+          return new Promise((resolve, reject) => {
+            pendingRequest.then(
+              (response) => resolve({ ...config, _fromPendingRequest: true, data: response }),
+              (error) => reject(error)
+            );
+          }) as any;
+        }
+      
+        // Try to get from cache
+        const cachedEntry = httpCache.get(url, params);
+        if (cachedEntry) {
+          // Add cache headers for conditional requests
+          if (cachedEntry.etag && config.headers) {
+            config.headers['If-None-Match'] = cachedEntry.etag;
+          }
+          if (cachedEntry.lastModified && config.headers) {
+            config.headers['If-Modified-Since'] = cachedEntry.lastModified;
+          }
+        }
+      }
+      
+      // Add cache busting for GET requests when needed
+      if (config.params?.noCacheMode) {
+        const timestamp = new Date().getTime();
+        config.params = { ...config.params, _t: timestamp };
+        delete config.params.noCacheMode;
+      }
     }
     
     return config;
@@ -65,6 +115,47 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // Response interceptor
 apiClient.interceptors.response.use(
   (response) => {
+    // Handle GET request caching
+    if (response.config.method?.toLowerCase() === 'get' && response.status === 200) {
+      const url = response.config.url || '';
+      const params = response.config.params || {};
+      
+      // Don't cache responses with certain status codes or error responses
+      const shouldCache = response.status === 200;
+      
+      if (shouldCache) {
+        // Extract cache headers
+        const etag = response.headers['etag'];
+        const lastModified = response.headers['last-modified'];
+        const cacheControl = response.headers['cache-control'];
+        
+        // Get TTL from cache-control header or config
+        let maxAge = undefined;
+        if (cacheControl) {
+          const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+          if (maxAgeMatch && maxAgeMatch[1]) {
+            maxAge = parseInt(maxAgeMatch[1], 10) * 1000; // Convert to ms
+          }
+        }
+        
+        // Use configured TTL if available
+        const configTtl = response.config.cacheOptions?.ttl || DEFAULT_CACHE_TTL;
+        maxAge = maxAge || configTtl;
+        
+        // Get priority from config
+        const priority = response.config.cacheOptions?.priority || CachePriority.MEDIUM;
+        
+        // Store in cache
+        httpCache.set(url, response.data, params, {
+          etag,
+          lastModified,
+          cacheControl,
+          maxAge,
+          priority
+        });
+      }
+    }
+    
     return response;
   },
   async (error: AxiosError) => {
@@ -74,6 +165,25 @@ apiClient.interceptors.response.use(
     }
     
     const originalRequest = error.config;
+    
+    // Handle HTTP 304 Not Modified (use cached data)
+    if (error.response?.status === 304) {
+      const url = originalRequest.url || '';
+      const params = originalRequest.params || {};
+      
+      // Get from cache
+      const cachedEntry = httpCache.get(url, params);
+      if (cachedEntry) {
+        // Construct a success response using cached data
+        const cachedResponse: AxiosResponse = {
+          ...error.response,
+          status: 200,
+          data: cachedEntry.data,
+          _fromCache: true
+        };
+        return cachedResponse;
+      }
+    }
     
     // Skip retry if explicitly marked
     if (originalRequest.skipRetry) {
@@ -89,7 +199,7 @@ apiClient.interceptors.response.use(
     const shouldRetry = 
       originalRequest._retryCount < MAX_RETRIES && 
       RETRY_STATUS_CODES.includes(error.response?.status || 0) &&
-      ['get', 'head'].includes(originalRequest.method?.toLowerCase() || '');
+      ['get', 'head', 'options'].includes(originalRequest.method?.toLowerCase() || '');
     
     // Handle 401 Unauthorized error (token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -104,18 +214,126 @@ apiClient.interceptors.response.use(
     // Implement retry logic
     if (shouldRetry) {
       originalRequest._retryCount++;
-      const delay = RETRY_DELAY * (2 ** (originalRequest._retryCount - 1)); // Exponential backoff
       
-      console.log(`Retrying request (${originalRequest._retryCount}/${MAX_RETRIES}) after ${delay}ms`);
+      // Exponential backoff with jitter
+      const delay = RETRY_DELAY * (2 ** (originalRequest._retryCount - 1)) * (0.8 + Math.random() * 0.4);
+      
+      console.log(`Retrying request (${originalRequest._retryCount}/${MAX_RETRIES}) after ${Math.round(delay)}ms: ${originalRequest.url}`);
       await sleep(delay);
       
+      // For GET requests, try to use cached data during retry to improve UX
+      if (originalRequest.method?.toLowerCase() === 'get') {
+        const url = originalRequest.url || '';
+        const params = originalRequest.params || {};
+        
+        // Get from cache
+        const cachedEntry = httpCache.get(url, params);
+        if (cachedEntry) {
+          // Construct a success response using cached data, but still retry in background
+          console.log(`Using cached data for ${url} while retrying in background`);
+          
+          // Make the retry request in the background
+          apiClient(originalRequest).then(
+            (response) => {
+              // Update cache with fresh data
+              if (response.status === 200) {
+                httpCache.set(url, response.data, params, {
+                  etag: response.headers['etag'],
+                  lastModified: response.headers['last-modified'],
+                  cacheControl: response.headers['cache-control'],
+                  priority: originalRequest.cacheOptions?.priority || CachePriority.MEDIUM
+                });
+              }
+            },
+            () => {} // Ignore errors in background retry
+          );
+          
+          // Return cached data immediately
+          const cachedResponse: AxiosResponse = {
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config: originalRequest,
+            data: cachedEntry.data,
+            _fromCache: true,
+            _stale: true
+          };
+          return cachedResponse;
+        }
+      }
+      
       return apiClient(originalRequest);
+    }
+    
+    // For GET requests that failed, try to use cached data as fallback
+    if (originalRequest.method?.toLowerCase() === 'get') {
+      const url = originalRequest.url || '';
+      const params = originalRequest.params || {};
+      
+      // Get from cache
+      const cachedEntry = httpCache.get(url, params);
+      if (cachedEntry) {
+        console.log(`Request failed, using cached data as fallback for ${url}`);
+        
+        // Construct a success response using cached data
+        const cachedResponse: AxiosResponse = {
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: originalRequest,
+          data: cachedEntry.data,
+          _fromCache: true,
+          _stale: true
+        };
+        return cachedResponse;
+      }
     }
     
     // Handle other errors
     return Promise.reject(error);
   }
 );
+
+/**
+ * Invalidate cache entries by tag
+ * @param tags - Tags to invalidate
+ */
+export const invalidateCacheTags = (tags: string[]): void => {
+  // Implement tag-based cache invalidation
+  console.log(`Invalidating cache for tags: ${tags.join(', ')}`);
+  
+  // This is a simplified implementation that clears the entire cache
+  // In a real implementation, you'd track which URLs are associated with which tags
+  httpCache.clear();
+};
+
+/**
+ * Prefetch API resources for better performance
+ * @param paths - Array of API paths to prefetch
+ */
+export const prefetchResources = async (paths: string[]): Promise<void> => {
+  for (const path of paths) {
+    try {
+      // Extract URL and params if path includes query params
+      let url = path;
+      let params = {};
+      
+      if (path.includes('?')) {
+        const [urlPart, queryPart] = path.split('?');
+        url = urlPart;
+        params = Object.fromEntries(
+          new URLSearchParams(queryPart).entries()
+        );
+      }
+      
+      // Prefetch the resource
+      await httpCache.prefetch(url, params);
+    } catch (error) {
+      // Silently fail for prefetch requests
+      console.debug(`Prefetch failed for ${path}`, error);
+    }
+  }
+};
 
 /**
  * Health check function to verify backend connectivity
@@ -138,7 +356,7 @@ export const checkApiHealth = async (): Promise<boolean> => {
  * Comprehensive health check that includes all backend services
  * @returns Promise with detailed health information
  */
-export const getApiFullHealth = async (): Promise<ApiResponse<any>> => {
+export const getApiFullHealth = async (): Promise<any> => {
   try {
     const response = await apiClient.get('/health/full', { 
       timeout: 10000,
@@ -175,6 +393,7 @@ export interface ApiError {
   errors?: Record<string, string[]>;
   isNetworkError?: boolean;
   isTimeoutError?: boolean;
+  hasCachedData?: boolean;
 }
 
 // User-friendly error messages
@@ -209,12 +428,17 @@ export function handleApiError(error: unknown): ApiError {
     }
     
     const response = error.response?.data;
+    
+    // Check if we have stale data from cache (safely access custom property)
+    const hasCachedData = error.response ? !!error.response._fromCache : false;
+    
     return {
       status: status || 500,
       message: response?.message || friendlyMessage,
       errors: response?.errors,
       isNetworkError,
-      isTimeoutError
+      isTimeoutError,
+      hasCachedData
     };
   }
   
