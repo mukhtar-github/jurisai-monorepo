@@ -15,9 +15,13 @@ from src.core.database import create_tables
 
 # Import middleware
 from src.middleware import RequestLoggingMiddleware
+from src.middleware.permission import PermissionMiddleware
 
 # Import routers
 from src.routes import documents, health, search, summarization, auth
+from src.routes.roles import router as roles_router
+from src.routes.permissions import router as permissions_router
+from src.routes.system import router as system_router
 
 # Configure logging
 logging.basicConfig(
@@ -66,6 +70,7 @@ app = FastAPI(
 
 # Add middlewares
 app.add_middleware(RequestLoggingMiddleware)  # Add request logging middleware
+app.add_middleware(PermissionMiddleware)  # Add permission middleware
 
 # Add CORS middleware
 app.add_middleware(
@@ -82,6 +87,9 @@ app.include_router(search)
 app.include_router(summarization)
 app.include_router(health)
 app.include_router(auth)
+app.include_router(roles_router)
+app.include_router(permissions_router)
+app.include_router(system_router)
 
 # Check for AI models
 try:
