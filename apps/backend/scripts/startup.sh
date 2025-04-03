@@ -16,10 +16,16 @@ ls -la
 echo "Setting up environment variables..."
 export PYTHONPATH=$PYTHONPATH:.
 
-# Run database migrations
-echo "Running database migrations..."
+# Run database migrations conditionally
+echo "Checking database migration status..."
 if [ -f "alembic.ini" ]; then
-    python -m alembic upgrade head
+    if [ "$SKIP_MIGRATIONS" = "true" ]; then
+        echo "Skipping migrations as requested by SKIP_MIGRATIONS env var"
+    else
+        echo "Attempting to run database migrations..."
+        # Try to run migrations but continue if it fails
+        python -m alembic upgrade head || echo "Migration failed, but continuing with deployment"
+    fi
 else
     echo "ERROR: alembic.ini not found. Current directory is $(pwd)"
     echo "Directory contents:"
@@ -29,10 +35,12 @@ fi
 # Run model setup script to download lightweight models
 echo "Setting up AI models..."
 if [ -f "scripts/setup_models.py" ]; then
-    python scripts/setup_models.py
+    # Try to run model setup but continue if it fails
+    python scripts/setup_models.py || echo "Model setup failed, but continuing with deployment"
 else
-    echo "ERROR: setup_models.py not found. Looking in ./scripts:"
+    echo "WARNING: setup_models.py not found. Looking in ./scripts:"
     ls -la ./scripts
+    echo "Continuing without model setup..."
 fi
 
 # Start the application

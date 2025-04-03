@@ -28,6 +28,7 @@ JWT_SECRET_KEY = "${JWT_SECRET}"  # This should be set in Railway Secrets
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = "30"
 LOG_LEVEL = "INFO"
+SKIP_MIGRATIONS = "true"  # Enable to bypass migrations for initial deployment
 
 # AI Model Settings - Using lightweight models
 EMBEDDINGS_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
