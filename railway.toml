@@ -1,6 +1,7 @@
 [build]
 builder = "nixpacks"
 buildCommand = "cd apps/backend && pip install poetry && poetry install"
+nixpacksConfigPath = "apps/backend"
 
 [deploy]
 startCommand = "cd apps/backend && ./scripts/startup.sh"
