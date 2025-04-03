@@ -61,17 +61,23 @@ def install_model(model_name):
     try:
         logger.info(f"Installing model: {model_name}")
         
-        # Use huggingface_hub to download the model
-        subprocess.run(
-            [
-                sys.executable, 
-                "-m", 
-                "pip", 
-                "install", 
-                "huggingface_hub"
-            ],
-            check=True
-        )
+        # Ensure huggingface_hub is installed
+        try:
+            import huggingface_hub
+        except ImportError:
+            logger.info("Installing huggingface_hub package...")
+            subprocess.run(
+                [
+                    sys.executable, 
+                    "-m", 
+                    "pip", 
+                    "install", 
+                    "huggingface_hub"
+                ],
+                check=True
+            )
+            # Now import should work
+            import huggingface_hub
         
         # Download the model
         from huggingface_hub import snapshot_download

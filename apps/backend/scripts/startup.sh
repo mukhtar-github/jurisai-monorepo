@@ -4,8 +4,7 @@ set -e
 
 echo "Starting JurisAI backend deployment..."
 
-# Change to the correct directory - the app is now directly in /app
-# NOT in /app/apps/backend since we specified the root directory
+# Change to the correct directory
 cd /app
 
 # Set up Python environment if needed
@@ -14,12 +13,12 @@ export PYTHONPATH=$PYTHONPATH:/app
 
 # Run database migrations
 echo "Running database migrations..."
-poetry run alembic upgrade head
+python -m alembic upgrade head
 
 # Run model setup script to download lightweight models
 echo "Setting up AI models..."
-poetry run python scripts/setup_models.py
+python scripts/setup_models.py
 
 # Start the application
 echo "Starting FastAPI application..."
-exec poetry run gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app --bind 0.0.0.0:$PORT
+exec gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app --bind 0.0.0.0:$PORT
