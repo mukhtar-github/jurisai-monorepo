@@ -1,14 +1,15 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd apps/backend && pip install -r requirements.txt"
+buildCommand = "pip install -r requirements.txt"
 nixpacksConfigPath = "apps/backend"
 
 [deploy]
-startCommand = "cd apps/backend && ./scripts/startup.sh"
+startCommand = "./scripts/startup.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 healthcheckPath = "/health"
 healthcheckTimeout = 10
+rootDirectory = "apps/backend"
 
 # Define service dependencies
 [services]
@@ -32,7 +33,7 @@ LOG_LEVEL = "INFO"
 EMBEDDINGS_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 USE_LIGHTWEIGHT_MODELS = "true"
 MAX_MODEL_SIZE_GB = "3"
-MODEL_CACHE_DIR = "/app/models"
+MODEL_CACHE_DIR = "./models"
 
 # Configure resource requirements for the service
 [resources]

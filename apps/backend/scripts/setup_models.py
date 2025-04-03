@@ -26,13 +26,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger("model_setup")
 
+# Debug information about environment
+logger.info(f"Current working directory: {os.getcwd()}")
+logger.info(f"Python executable: {sys.executable}")
+logger.info(f"Python path: {sys.path}")
+logger.info(f"Directory contents: {os.listdir('.')}")
+if os.path.exists('./scripts'):
+    logger.info(f"Scripts directory contents: {os.listdir('./scripts')}")
+
 # Model configuration
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 LIGHTWEIGHT_RAG_MODEL = "BAAI/bge-small-en-v1.5"
 FALLBACK_MODEL = "distilbert-base-uncased"
 
 # Get environment variables
-MODEL_CACHE_DIR = os.environ.get("MODEL_CACHE_DIR", "/app/models")
+MODEL_CACHE_DIR = os.environ.get("MODEL_CACHE_DIR", "./models")
 MAX_MODEL_SIZE_GB = float(os.environ.get("MAX_MODEL_SIZE_GB", "3"))
 USE_LIGHTWEIGHT_MODELS = os.environ.get("USE_LIGHTWEIGHT_MODELS", "true").lower() == "true"
 
@@ -64,6 +72,7 @@ def install_model(model_name):
         # Ensure huggingface_hub is installed
         try:
             import huggingface_hub
+            logger.info("huggingface_hub is already installed")
         except ImportError:
             logger.info("Installing huggingface_hub package...")
             subprocess.run(
@@ -78,10 +87,16 @@ def install_model(model_name):
             )
             # Now import should work
             import huggingface_hub
+            logger.info("huggingface_hub installed successfully")
+        
+        # Create model directory if it doesn't exist
+        os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
+        logger.info(f"Model directory created: {MODEL_CACHE_DIR}")
         
         # Download the model
         from huggingface_hub import snapshot_download
         
+        logger.info(f"Downloading model {model_name} to {MODEL_CACHE_DIR}")
         model_path = snapshot_download(
             repo_id=model_name,
             cache_dir=MODEL_CACHE_DIR,
@@ -92,6 +107,8 @@ def install_model(model_name):
         return model_path
     except Exception as e:
         logger.error(f"Error installing model {model_name}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return None
 
 
@@ -173,4 +190,6 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         logger.error(f"Error during model setup: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         sys.exit(1)
