@@ -2,11 +2,13 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "cd apps/backend && python -m pip install -e ."
+    "buildCommand": "cd apps/backend && pip install poetry && poetry install"
   },
   "deploy": {
-    "startCommand": "cd apps/backend && python -m gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app",
+    "startCommand": "cd apps/backend && ./scripts/startup.sh",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 3,
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 10
   }
 }
