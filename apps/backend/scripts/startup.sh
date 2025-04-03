@@ -4,8 +4,9 @@ set -e
 
 echo "Starting JurisAI backend deployment..."
 
-# Change to the backend directory
-cd /app/apps/backend
+# Change to the correct directory - the app is now directly in /app
+# NOT in /app/apps/backend since we specified the root directory
+cd /app
 
 # Set up Python environment if needed
 echo "Setting up environment variables..."
