@@ -22,6 +22,7 @@ from src.routes import documents, health, search, summarization, auth
 from src.routes.roles import router as roles_router
 from src.routes.permissions import router as permissions_router
 from src.routes.system import router as system_router
+from src.routes.admin import router as admin_router
 
 # Configure logging
 logging.basicConfig(
@@ -90,6 +91,7 @@ app.include_router(auth)
 app.include_router(roles_router)
 app.include_router(permissions_router)
 app.include_router(system_router)
+app.include_router(admin_router)
 
 # Check for AI models
 try:
