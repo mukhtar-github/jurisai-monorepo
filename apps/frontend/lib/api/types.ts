@@ -293,3 +293,88 @@ export interface VectorIndexStatusResponse {
     dimensions: number;
   };
 }
+
+// RBAC (Role-Based Access Control) types
+/**
+ * Permission model
+ */
+export interface Permission {
+  id: number;
+  resource: string;
+  action: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Role model
+ */
+export interface Role {
+  id: number;
+  name: string;
+  description: string;
+  permissions: Permission[];
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * User model with roles
+ */
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string; // Legacy role (admin/user)
+  roles: Role[]; // RBAC roles
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Role creation/update parameters
+ */
+export interface RoleParams {
+  name: string;
+  description: string;
+  permission_ids?: number[];
+}
+
+/**
+ * Permission creation/update parameters
+ */
+export interface PermissionParams {
+  resource: string;
+  action: string;
+  description: string;
+}
+
+/**
+ * User role update parameters
+ */
+export interface UserRoleUpdateParams {
+  role: string; // Legacy role (admin/user)
+}
+
+/**
+ * Role assignment parameters
+ */
+export interface RoleAssignmentParams {
+  role_id: number;
+}
+
+/**
+ * System features status response
+ */
+export interface SystemFeaturesResponse {
+  status: string;
+  features: {
+    [key: string]: {
+      name: string;
+      status: string;
+      description: string;
+      version: string | null;
+    };
+  };
+}
