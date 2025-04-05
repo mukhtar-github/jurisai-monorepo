@@ -175,7 +175,7 @@ export default function RoleFormDialog({
                             <CommandInput placeholder="Search permissions..." />
                             <CommandEmpty>No permissions found.</CommandEmpty>
                             <CommandGroup className="max-h-60 overflow-y-auto">
-                              {permissions?.map((permission) => (
+                              {permissions?.map((permission: Permission) => (
                                 <CommandItem
                                   key={permission.id}
                                   value={permission.id.toString()}

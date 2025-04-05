@@ -231,6 +231,21 @@ export function useBatchStatus(batchId: string) {
   );
 }
 
+// Batch analyze documents mutation
+export function useBatchAnalyze() {
+  const batchAnalyzeMutation = createMutation<BatchAnalyzeParams, string>(
+    '/documents/analyze/batch',
+    'post'
+  );
+  
+  return batchAnalyzeMutation({
+    onSuccess: () => {
+      const queryClient = useQueryClient();
+      queryClient.invalidateQueries({ queryKey: documentKeys.lists() });
+    },
+  });
+}
+
 // Export the traditional hooks for backward compatibility
 export {
   useDocumentListLegacy as useDocumentList_v3,

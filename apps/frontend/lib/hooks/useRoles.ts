@@ -1,118 +1,117 @@
+/**
+ * React Query hooks for role management
+ */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Role,
-  RoleCreateParams,
-  RoleUpdateParams,
-  assignRoleToUser,
-  createRole,
-  deleteRole,
-  getRole,
   getRoles,
-  removeRoleFromUser,
+  getRole,
+  createRole,
   updateRole,
-} from '../api/roles';
+  deleteRole,
+  assignRoleToUser,
+  removeRoleFromUser
+} from '@/lib/api/roles';
+import { RoleParams, Role } from '@/lib/api/types';
 
-// Query key constants
-export const ROLES_QUERY_KEY = 'roles';
-export const ROLE_DETAIL_QUERY_KEY = 'role-detail';
-
-/**
- * Hook for fetching a list of roles
- */
-export const useRoles = (skip = 0, limit = 100) => {
-  return useQuery({
-    queryKey: [ROLES_QUERY_KEY, { skip, limit }],
-    queryFn: () => getRoles(skip, limit),
-  });
+// Query keys
+export const roleKeys = {
+  all: ['roles'] as const,
+  lists: () => [...roleKeys.all, 'list'] as const,
+  list: (filters: any) => [...roleKeys.lists(), { ...filters }] as const,
+  details: () => [...roleKeys.all, 'detail'] as const,
+  detail: (id: number) => [...roleKeys.details(), id] as const,
 };
 
 /**
- * Hook for fetching a specific role by ID
+ * Hook for fetching all roles
  */
-export const useRoleDetail = (roleId: number) => {
+export function useRoles() {
   return useQuery({
-    queryKey: [ROLE_DETAIL_QUERY_KEY, roleId],
-    queryFn: () => getRole(roleId),
-    enabled: !!roleId, // Only run when roleId is provided
+    queryKey: roleKeys.lists(),
+    queryFn: () => getRoles(),
   });
-};
+}
+
+/**
+ * Hook for fetching a specific role
+ */
+export function useRole(id: number) {
+  return useQuery({
+    queryKey: roleKeys.detail(id),
+    queryFn: () => getRole(id),
+    enabled: !!id,
+  });
+}
 
 /**
  * Hook for creating a new role
  */
-export const useCreateRole = () => {
+export function useCreateRole() {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: (roleData: RoleCreateParams) => createRole(roleData),
+    mutationFn: (newRole: RoleParams) => createRole(newRole),
     onSuccess: () => {
-      // Invalidate the roles list query to refresh data
-      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: roleKeys.lists() });
     },
   });
-};
+}
 
 /**
  * Hook for updating an existing role
  */
-export const useUpdateRole = (roleId: number) => {
+export function useUpdateRole() {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: (roleData: RoleUpdateParams) => updateRole(roleId, roleData),
-    onSuccess: (updatedRole) => {
-      // Update both the list and detail queries
-      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
-      queryClient.invalidateQueries({ 
-        queryKey: [ROLE_DETAIL_QUERY_KEY, roleId] 
-      });
+    mutationFn: ({ id, role }: { id: number; role: RoleParams }) => updateRole(id, role),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: roleKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: roleKeys.lists() });
     },
   });
-};
+}
 
 /**
  * Hook for deleting a role
  */
-export const useDeleteRole = () => {
+export function useDeleteRole() {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: (roleId: number) => deleteRole(roleId),
+    mutationFn: (id: number) => deleteRole(id),
     onSuccess: () => {
-      // Invalidate the roles list query to refresh data
-      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: roleKeys.lists() });
     },
   });
-};
+}
 
 /**
  * Hook for assigning a role to a user
  */
-export const useAssignRoleToUser = () => {
+export function useAssignRoleToUser() {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: ({ roleId, userId }: { roleId: number; userId: number }) =>
+    mutationFn: ({ roleId, userId }: { roleId: number; userId: number }) => 
       assignRoleToUser(roleId, userId),
     onSuccess: () => {
-      // Could also invalidate user queries if needed
-      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
-};
+}
 
 /**
  * Hook for removing a role from a user
  */
-export const useRemoveRoleFromUser = () => {
+export function useRemoveRoleFromUser() {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: ({ roleId, userId }: { roleId: number; userId: number }) =>
+    mutationFn: ({ roleId, userId }: { roleId: number; userId: number }) => 
       removeRoleFromUser(roleId, userId),
     onSuccess: () => {
-      // Could also invalidate user queries if needed
-      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
-};
+}

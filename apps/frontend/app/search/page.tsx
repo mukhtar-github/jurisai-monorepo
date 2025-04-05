@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useHybridSearch, useLexicalSearch, useSemanticSearch } from '@/lib/hooks/useSearch';
 import { useDocumentList } from '@/lib/hooks/useDocuments';
@@ -8,7 +8,8 @@ import SearchForm from '@/components/search/SearchForm';
 import SearchResults from '@/components/search/SearchResults';
 import { DocumentSearchParams } from '@/lib/api/types';
 
-export default function SearchPage() {
+// This component contains the useSearchParams hook
+function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -171,5 +172,14 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Main component wrapped with Suspense
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading search...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }

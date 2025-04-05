@@ -128,7 +128,7 @@ export default function RolesPage() {
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>
+      <AlertDialog open={!!roleToDelete} onOpenChange={(open: boolean) => !open && setRoleToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Role</AlertDialogTitle>

@@ -2,7 +2,6 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { useCurrentUser } from '@/lib/hooks/useAuth';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const metadata: Metadata = {
@@ -24,17 +23,17 @@ export default function AdminLayout({
 
       <Tabs defaultValue="roles" className="mb-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="roles" asChild>
-            <Link href="/admin/roles">Roles</Link>
+          <TabsTrigger value="roles">
+            <Link href="/admin/roles" className="w-full h-full flex items-center justify-center">Roles</Link>
           </TabsTrigger>
-          <TabsTrigger value="permissions" asChild>
-            <Link href="/admin/permissions">Permissions</Link>
+          <TabsTrigger value="permissions">
+            <Link href="/admin/permissions" className="w-full h-full flex items-center justify-center">Permissions</Link>
           </TabsTrigger>
-          <TabsTrigger value="users" asChild>
-            <Link href="/admin/users">Users</Link>
+          <TabsTrigger value="users">
+            <Link href="/admin/users" className="w-full h-full flex items-center justify-center">Users</Link>
           </TabsTrigger>
-          <TabsTrigger value="system" asChild>
-            <Link href="/admin/system">System</Link>
+          <TabsTrigger value="system">
+            <Link href="/admin/system" className="w-full h-full flex items-center justify-center">System</Link>
           </TabsTrigger>
         </TabsList>
       </Tabs>

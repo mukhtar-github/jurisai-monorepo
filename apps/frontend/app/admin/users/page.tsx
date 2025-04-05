@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useUsers } from '@/lib/hooks/useUsers';
-import { useRoles } from '@/lib/hooks/useRoles';
+import { useUsers, useUpdateUserRole } from '@/lib/hooks/useUsers';
+import { useRoles, useAssignRoleToUser, useRemoveRoleFromUser } from '@/lib/hooks/useRoles';
 import { User, Role, UserRoleUpdateParams } from '@/lib/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useUpdateUserRole, useAssignRoleToUser, useRemoveRoleFromUser } from '@/lib/hooks/useRoles';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreVertical, UserCheck, UserMinus, ShieldCheck, ShieldX } from 'lucide-react';
@@ -213,7 +212,7 @@ export default function UsersPage() {
       {/* Confirmation Dialog for Admin/User Role Changes */}
       <AlertDialog 
         open={!!selectedUser && (actionType === 'promote' || actionType === 'demote')} 
-        onOpenChange={(open) => !open && setSelectedUser(null)}
+        onOpenChange={(open: boolean) => !open && setSelectedUser(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -236,7 +235,7 @@ export default function UsersPage() {
       {/* Confirmation Dialog for RBAC Role Assignment/Removal */}
       <AlertDialog 
         open={!!selectedUser && !!selectedRole && (actionType === 'assign' || actionType === 'remove')} 
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!open) {
             setSelectedUser(null);
             setSelectedRole(null);

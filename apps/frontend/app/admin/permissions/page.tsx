@@ -65,7 +65,7 @@ export default function PermissionsPage() {
   };
   
   // Group permissions by resource
-  const permissionsByResource = permissions?.reduce((groups: Record<string, Permission[]>, permission) => {
+  const permissionsByResource = permissions?.reduce((groups: Record<string, Permission[]>, permission: Permission) => {
     const resourceName = permission.resource;
     if (!groups[resourceName]) {
       groups[resourceName] = [];
@@ -103,7 +103,7 @@ export default function PermissionsPage() {
 
       {permissions && permissions.length > 0 ? (
         <div className="grid grid-cols-1 gap-6">
-          {Object.entries(permissionsByResource).map(([resource, resourcePermissions]) => (
+          {(Object.entries(permissionsByResource) as [string, Permission[]][]).map(([resource, resourcePermissions]) => (
             <Card key={resource}>
               <CardHeader className="pb-3">
                 <CardTitle>{resource}</CardTitle>
@@ -239,7 +239,7 @@ export default function PermissionsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!permissionToDelete} onOpenChange={(open) => !open && setPermissionToDelete(null)}>
+      <AlertDialog open={!!permissionToDelete} onOpenChange={(open: boolean) => !open && setPermissionToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Permission</AlertDialogTitle>
