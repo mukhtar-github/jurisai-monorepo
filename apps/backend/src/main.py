@@ -84,14 +84,14 @@ app.add_middleware(
 
 # Include routers
 app.include_router(documents)
-app.include_router(search)
+# app.include_router(search)  # Not essential for first MVP
 app.include_router(summarization)
 app.include_router(health)
-app.include_router(auth)
-app.include_router(roles_router)
-app.include_router(permissions_router)
-app.include_router(system_router)
-app.include_router(admin_router)
+# app.include_router(auth)  # Will be added in future iterations
+# app.include_router(roles_router)  # Not needed for pilot
+# app.include_router(permissions_router)  # Not needed for pilot
+# app.include_router(system_router)  # Not needed for pilot
+# app.include_router(admin_router)  # Not needed for pilot
 
 # Check for AI models
 try:
