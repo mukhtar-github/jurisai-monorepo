@@ -1,14 +1,16 @@
-name: AI Models Tests
+name: AI Integration Tests
 
 on:
   push:
     branches: [ main, develop, master ]
     paths:
-      - 'libs/ai-models/**'
+      - 'apps/backend/src/services/legal_summarizer.py'
+      - 'apps/backend/tests/test_summarizer_openai.py'
   pull_request:
     branches: [ main, develop, master ]
     paths:
-      - 'libs/ai-models/**'
+      - 'apps/backend/src/services/legal_summarizer.py'
+      - 'apps/backend/tests/test_summarizer_openai.py'
 
 jobs:
   test:
@@ -31,21 +33,18 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd libs/ai-models
-        poetry install
+        cd apps/backend
+        pip install -e .
       
-    - name: Run tests
+    - name: Run OpenAI integration tests (only if API key is available)
       run: |
-        cd libs/ai-models
-        poetry run python -m pytest tests/ --cov=src
-        
-    - name: Validate model functionality
-      run: |
-        cd libs/ai-models
-        # Run sample model tests to validate basic functionality
-        poetry run python -c "
-        from src.advanced_features import JurisAIAdvanced
-        # Simple validation that the code imports correctly
-        ai = JurisAIAdvanced(use_fine_tuned=False)
-        print('Advanced AI features initialized successfully')
-        "
+        cd apps/backend
+        if [ ! -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+          # Set environment variable for tests
+          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          pytest tests/test_summarizer_openai.py -v
+        else
+          echo "OPENAI_API_KEY not provided, skipping OpenAI integration tests"
+          # Exit successfully even without running tests
+          exit 0
+        fi

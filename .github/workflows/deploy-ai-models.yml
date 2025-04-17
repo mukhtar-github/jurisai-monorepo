@@ -1,10 +1,10 @@
-name: Build and Deploy AI Models
+name: Deploy Backend API with OpenAI Integration
 
 on:
   push:
     branches: [ main, master ]
     paths:
-      - 'libs/ai-models/**'
+      - 'apps/backend/**'
   workflow_dispatch:  # Manual trigger option
 
 jobs:
@@ -20,47 +20,40 @@ jobs:
       with:
         python-version: '3.12'
         
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.7.1
-        
-    - name: Build model package
+    - name: Install dependencies
       run: |
-        cd libs/ai-models
-        poetry build
+        cd apps/backend
+        pip install -e .
         
-    - name: Check registry credentials
+    - name: Run basic tests
+      run: |
+        cd apps/backend
+        pytest tests/test_legal_summarizer.py -v
+        
+    - name: Check Railway CLI credentials
       id: check_secrets
       run: |
-        if [[ -n "${{ secrets.REGISTRY_URL }}" && \
-              -n "${{ secrets.REGISTRY_HOST }}" && \
-              -n "${{ secrets.REGISTRY_USERNAME }}" && \
-              -n "${{ secrets.REGISTRY_PASSWORD }}" ]]; then
+        if [[ -n "${{ secrets.RAILWAY_TOKEN }}" ]]; then
           echo "has_secrets=true" >> $GITHUB_OUTPUT
         else
           echo "has_secrets=false" >> $GITHUB_OUTPUT
         fi
         
-    - name: Deploy to model registry
+    - name: Deploy to Railway
+      if: steps.check_secrets.outputs.has_secrets == 'true'
+      uses: bervProject/railway-deploy@main
+      with:
+        railway_token: ${{ secrets.RAILWAY_TOKEN }}
+        service: jurisai-backend
+        
+    - name: Deployment Status
       if: steps.check_secrets.outputs.has_secrets == 'true'
       run: |
-        # This could deploy to a model registry like HuggingFace, AWS S3, etc.
-        cd libs/ai-models
-        # Create pyproject.toml entries for private repository
-        poetry config repositories.jurisai "${{ secrets.REGISTRY_URL }}"
-        # Create and use netrc file for authentication instead of command line args
-        echo "machine ${{ secrets.REGISTRY_HOST }} login ${{ secrets.REGISTRY_USERNAME }} password ${{ secrets.REGISTRY_PASSWORD }}" > ~/.netrc
-        chmod 600 ~/.netrc
-        poetry publish --repository jurisai
-        echo "AI Models have been deployed successfully to registry"
-        
-    - name: Skip deployment notification
-      if: steps.check_secrets.outputs.has_secrets != 'true'
+        echo "Backend API with OpenAI integration deployed successfully to Railway!"
+        echo "Make sure to configure the OPENAI_API_KEY in Railway environment variables."
+      
+    - name: Skip Deployment (No Credentials)
+      if: steps.check_secrets.outputs.has_secrets == 'false'
       run: |
-        echo "Registry credentials not set. Skipping deployment."
-        
-    - name: Notify deployment
-      run: |
-        echo "AI Models workflow has completed"
-        # Add notification logic here (Slack, Email, etc.)
+        echo "Deployment skipped: No Railway token provided."
+        echo "To enable automatic deployment, add RAILWAY_TOKEN to repository secrets."
