@@ -42,6 +42,9 @@ export default function RootLayout({
                     <a href="/documents" className="block py-2 px-4 rounded hover:bg-gray-800">Documents</a>
                   </li>
                   <li>
+                    <a href="/summarize" className="block py-2 px-4 rounded hover:bg-gray-800">Summarization</a>
+                  </li>
+                  <li>
                     <a href="/drafting" className="block py-2 px-4 rounded hover:bg-gray-800">Document Drafting</a>
                   </li>
                 </ul>
