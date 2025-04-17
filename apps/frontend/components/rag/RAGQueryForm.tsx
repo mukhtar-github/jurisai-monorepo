@@ -4,10 +4,11 @@ import { useState, useRef } from 'react';
 import { useRAGQuery, useOneTimeRAGQuery } from '@/lib/hooks/useRAG';
 import { RAGQueryParams } from '@/lib/api/types';
 import Markdown from 'react-markdown';
-import { 
-  generateRAGQueryPDF, 
-  downloadPDF 
-} from '@/lib/services/pdfService';
+// PDF functionality disabled for MVP
+// import { 
+//   generateRAGQueryPDF, 
+//   downloadPDF 
+// } from '@/lib/services/pdfService';
 import { 
   showSuccess, 
   showError 
@@ -112,50 +113,50 @@ const RAGQueryForm = ({
   const responseContentRef = useRef<HTMLDivElement>(null);
 
   // Add function to download content as PDF
-  const handleDownloadPDF = async () => {
-    if (!responseContentRef.current || !result) return;
+  // const handleDownloadPDF = async () => {
+  //   if (!responseContentRef.current || !result) return;
     
-    try {
-      // Display loading state
-      const button = document.getElementById('download-pdf-button');
-      if (button) {
-        button.textContent = 'Generating PDF...';
-        button.setAttribute('disabled', 'true');
-      }
+  //   try {
+  //     // Display loading state
+  //     const button = document.getElementById('download-pdf-button');
+  //     if (button) {
+  //       button.textContent = 'Generating PDF...';
+  //       button.setAttribute('disabled', 'true');
+  //     }
       
-      // Generate PDF using our dedicated service
-      const pdf = await generateRAGQueryPDF(
-        responseContentRef.current,
-        queryParams.query,
-        result
-      );
+  //     // Generate PDF using our dedicated service
+  //     const pdf = await generateRAGQueryPDF(
+  //       responseContentRef.current,
+  //       queryParams.query,
+  //       result
+  //     );
       
-      // Download the PDF with a properly formatted filename
-      const filename = `jurisai-legal-query-response`;
-      downloadPDF(pdf, filename);
+  //     // Download the PDF with a properly formatted filename
+  //     const filename = `jurisai-legal-query-response`;
+  //     downloadPDF(pdf, filename);
       
-      // Show success notification
-      showSuccess('PDF successfully generated and downloaded');
+  //     // Show success notification
+  //     showSuccess('PDF successfully generated and downloaded');
       
-      // Reset button state
-      if (button) {
-        button.textContent = 'Download as PDF';
-        button.removeAttribute('disabled');
-      }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
+  //     // Reset button state
+  //     if (button) {
+  //       button.textContent = 'Download as PDF';
+  //       button.removeAttribute('disabled');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error generating PDF:', error);
       
-      // Show error notification
-      showError('Failed to generate PDF. Please try again.');
+  //     // Show error notification
+  //     showError('Failed to generate PDF. Please try again.');
       
-      // Reset button state
-      const button = document.getElementById('download-pdf-button');
-      if (button) {
-        button.textContent = 'Download as PDF';
-        button.removeAttribute('disabled');
-      }
-    }
-  };
+  //     // Reset button state
+  //     const button = document.getElementById('download-pdf-button');
+  //     if (button) {
+  //       button.textContent = 'Download as PDF';
+  //       button.removeAttribute('disabled');
+  //     }
+  //   }
+  // };
 
   return (
     <div className="space-y-6">
@@ -402,11 +403,11 @@ const RAGQueryForm = ({
             {queryParams.response_format === 'markdown' ? (
               <div className="prose max-w-none">
                 {/* Add download button */}
-                {result && result.response && (
+                {/* {result && result.response && (
                   <div className="mb-4 flex justify-end">
                     <button
                       id="download-pdf-button"
-                      onClick={handleDownloadPDF}
+                      // onClick={handleDownloadPDF}
                       className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
                     >
                       <svg 
@@ -426,7 +427,7 @@ const RAGQueryForm = ({
                       Download as PDF
                     </button>
                   </div>
-                )}
+                )} */}
                 
                 {/* Update ref to include both response and sources in the PDF content */}
                 <div className="markdown-content" ref={responseContentRef}>
