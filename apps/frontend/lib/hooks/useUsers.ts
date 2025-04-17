@@ -43,14 +43,14 @@ export function useUser(id: number) {
 /**
  * Hook for updating a user's legacy role (admin/user)
  */
-export function useUpdateUserRole() {
+export function useUpdateUserRole(userId: number) {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ userId, roleData }: { userId: number; roleData: UserRoleUpdateParams }) => 
+    mutationFn: (roleData: UserRoleUpdateParams) => 
       updateUserRole(userId, roleData),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.userId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) });
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
       // Also invalidate the current user query if it's cached
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });

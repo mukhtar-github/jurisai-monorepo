@@ -60,7 +60,7 @@ export function useCreateRole() {
 /**
  * Hook for updating an existing role
  */
-export function useUpdateRole() {
+export function useUpdateRole(roleId: number) {
   const queryClient = useQueryClient();
   
   return useMutation({
