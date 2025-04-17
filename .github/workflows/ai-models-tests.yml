@@ -35,6 +35,7 @@ jobs:
       run: |
         cd apps/backend
         pip install -e .
+        pip install pytest pytest-asyncio pytest-cov
       
     - name: Run OpenAI integration tests (only if API key is available)
       run: |

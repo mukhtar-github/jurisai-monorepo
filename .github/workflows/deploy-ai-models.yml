@@ -24,6 +24,7 @@ jobs:
       run: |
         cd apps/backend
         pip install -e .
+        pip install pytest pytest-asyncio
         
     - name: Run basic tests
       run: |
