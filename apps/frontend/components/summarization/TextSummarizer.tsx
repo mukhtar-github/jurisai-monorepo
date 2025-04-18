@@ -4,13 +4,12 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { useLegalDocumentSummarization } from '@/lib/hooks/useSummarization';
 import { SummaryViewer } from './SummaryViewer';
 import { SummaryResponse } from '@/lib/api/summarization';
+import { SummarizationConfig } from './SummarizationConfig';
 
 /**
  * A component for submitting legal text for summarization
@@ -80,49 +79,18 @@ export function TextSummarizer() {
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="max-length">Maximum Summary Length</Label>
-                <Input
-                  id="max-length"
-                  type="number"
-                  min={100}
-                  max={5000}
-                  value={maxLength}
-                  onChange={(e) => setMaxLength(parseInt(e.target.value) || 1000)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="focus-area">Focus Area (Optional)</Label>
-                <Input
-                  id="focus-area"
-                  placeholder="e.g., contract liability, negligence, etc."
-                  value={focusArea}
-                  onChange={(e) => setFocusArea(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            <div className="flex flex-col space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="extract-key-points"
-                  checked={extractKeyPoints}
-                  onCheckedChange={(checked) => setExtractKeyPoints(checked as boolean)}
-                />
-                <Label htmlFor="extract-key-points">Extract key points</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="preserve-citations"
-                  checked={preserveCitations}
-                  onCheckedChange={(checked) => setPreserveCitations(checked as boolean)}
-                />
-                <Label htmlFor="preserve-citations">Preserve legal citations</Label>
-              </div>
-            </div>
+            {/* Using the standardized SummarizationConfig component */}
+            <SummarizationConfig
+              inputMethod="text"
+              maxLength={maxLength}
+              setMaxLength={setMaxLength}
+              focusArea={focusArea}
+              setFocusArea={setFocusArea}
+              extractKeyPoints={extractKeyPoints}
+              setExtractKeyPoints={setExtractKeyPoints}
+              preserveCitations={preserveCitations}
+              setPreserveCitations={setPreserveCitations}
+            />
           </CardContent>
           
           <CardFooter>

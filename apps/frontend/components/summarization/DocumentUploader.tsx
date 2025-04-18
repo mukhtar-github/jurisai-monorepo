@@ -10,8 +10,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { SummarizationConfig } from './SummarizationConfig';
 
 // Document types
 const DOCUMENT_TYPES = [
@@ -39,6 +39,12 @@ interface FormValues {
 export function DocumentUploader() {
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
+  // Add summarization config state
+  const [maxLength, setMaxLength] = useState(1000);
+  const [focusArea, setFocusArea] = useState('');
+  const [extractKeyPoints, setExtractKeyPoints] = useState(true);
+  const [preserveCitations, setPreserveCitations] = useState(true);
+  
   const form = useForm<FormValues>({
     defaultValues: {
       title: '',
@@ -70,9 +76,10 @@ export function DocumentUploader() {
           title: data.title || file.name,
           document_type: data.document_type,
           jurisdiction: data.jurisdiction,
-          maxLength: 1000,
-          extractKeyPoints: true,
-          preserveCitations: true
+          maxLength: maxLength,
+          focusArea: focusArea || undefined,
+          extractKeyPoints: extractKeyPoints,
+          preserveCitations: preserveCitations
         },
         {
           onSuccess: (data) => {
@@ -150,85 +157,23 @@ export function DocumentUploader() {
                 )}
               />
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Document Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter document title" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Will be auto-filled from filename if left empty.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="document_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Document Type</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select document type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {DOCUMENT_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Type of legal document being uploaded.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="jurisdiction"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Jurisdiction</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select jurisdiction" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {JURISDICTIONS.map((jurisdiction) => (
-                          <SelectItem key={jurisdiction.value} value={jurisdiction.value}>
-                            {jurisdiction.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Jurisdiction of the legal document.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              {/* Using the standardized SummarizationConfig component */}
+              <SummarizationConfig
+                inputMethod="upload"
+                maxLength={maxLength}
+                setMaxLength={setMaxLength}
+                focusArea={focusArea}
+                setFocusArea={setFocusArea}
+                extractKeyPoints={extractKeyPoints}
+                setExtractKeyPoints={setExtractKeyPoints}
+                preserveCitations={preserveCitations}
+                setPreserveCitations={setPreserveCitations}
+                documentTitle={form.watch('title')}
+                setDocumentTitle={(value) => form.setValue('title', value)}
+                documentType={form.watch('document_type')}
+                setDocumentType={(value) => form.setValue('document_type', value)}
+                jurisdiction={form.watch('jurisdiction')}
+                setJurisdiction={(value) => form.setValue('jurisdiction', value)}
               />
               
               <Button 

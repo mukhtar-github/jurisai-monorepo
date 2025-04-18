@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import RootProvider from "../lib/providers/RootProvider";
 import Notifications from "@/components/ui/Notifications";
+import { MobileNavigation } from "@/components/ui/mobile-nav";
 
 // Replace Google Font with a local font-family fallback
 // const inter = Inter({ 
@@ -52,9 +53,12 @@ export default function RootLayout({
             </div>
             
             <div className="flex flex-col flex-1 overflow-hidden">
-              {/* Navbar - Will be replaced with a component */}
+              {/* Navbar - With mobile navigation */}
               <header className="bg-white border-b h-16 flex items-center justify-between px-6">
-                <div className="md:hidden text-xl font-bold">JurisAI</div>
+                <div className="flex items-center">
+                  <MobileNavigation />
+                  <div className="md:hidden text-xl font-bold ml-2">JurisAI</div>
+                </div>
                 <div className="flex items-center">
                   <button className="p-2 rounded hover:bg-gray-100">
                     {/* Placeholder for user menu */}
@@ -65,9 +69,11 @@ export default function RootLayout({
                 </div>
               </header>
               
-              {/* Main content */}
-              <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                {children}
+              {/* Main content with improved container */}
+              <main className="flex-1 overflow-y-auto bg-gray-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                  {children}
+                </div>
               </main>
             </div>
           </div>
