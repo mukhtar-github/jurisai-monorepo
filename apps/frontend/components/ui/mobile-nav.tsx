@@ -30,7 +30,7 @@ export function MobileNavigation() {
   const closeMenu = () => setIsOpen(false);
   
   return (
-    <>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button 
           variant="ghost" 
@@ -43,21 +43,19 @@ export function MobileNavigation() {
         </Button>
       </SheetTrigger>
       
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="left" className="bg-gray-900 text-white p-0 max-w-[280px] sm:max-w-[320px]">
-          <SheetHeader className="p-4 border-b border-gray-800">
-            <SheetTitle className="text-white text-xl font-bold">JurisAI</SheetTitle>
-          </SheetHeader>
-          
-          <nav className="flex flex-col space-y-1 p-4">
-            <NavItem href="/" icon={Home} onClick={closeMenu}>Home</NavItem>
-            <NavItem href="/research" icon={Search} onClick={closeMenu}>Legal Research</NavItem>
-            <NavItem href="/documents" icon={FileText} onClick={closeMenu}>Documents</NavItem>
-            <NavItem href="/summarize" icon={Sparkles} onClick={closeMenu}>Summarization</NavItem>
-            <NavItem href="/drafting" icon={Edit} onClick={closeMenu}>Document Drafting</NavItem>
-          </nav>
-        </SheetContent>
-      </Sheet>
-    </>
+      <SheetContent side="left" className="bg-gray-900 text-white p-0 max-w-[280px] sm:max-w-[320px]">
+        <SheetHeader className="p-4 border-b border-gray-800">
+          <SheetTitle className="text-white text-xl font-bold">JurisAI</SheetTitle>
+        </SheetHeader>
+        
+        <nav className="flex flex-col space-y-1 p-4">
+          <NavItem href="/" icon={Home} onClick={closeMenu}>Home</NavItem>
+          <NavItem href="/research" icon={Search} onClick={closeMenu}>Legal Research</NavItem>
+          <NavItem href="/documents" icon={FileText} onClick={closeMenu}>Documents</NavItem>
+          <NavItem href="/summarize" icon={Sparkles} onClick={closeMenu}>Summarization</NavItem>
+          <NavItem href="/drafting" icon={Edit} onClick={closeMenu}>Document Drafting</NavItem>
+        </nav>
+      </SheetContent>
+    </Sheet>
   );
 }
