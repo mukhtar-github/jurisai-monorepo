@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,6 +27,32 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl mb-6;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl mb-4;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl mb-3;
+  }
+  
+  h4 {
+    @apply text-xl md:text-2xl mb-2;
+  }
+  
+  body {
+    @apply font-sans text-base antialiased;
+  }
+}
+
 /* Custom utility classes */
 .btn {
   @apply px-4 py-2 rounded-md font-medium transition-colors;
@@ -38,11 +67,15 @@ body {
 }
 
 .card {
-  @apply bg-white rounded-lg shadow p-6;
+  @apply bg-white rounded-lg shadow p-6 border border-gray-100;
+}
+
+.card-title {
+  @apply font-heading text-xl font-medium mb-2;
 }
 
 .input {
-  @apply border rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
 }
 
 .select {
