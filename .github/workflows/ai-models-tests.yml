@@ -1,0 +1,51 @@
+name: AI Integration Tests
+
+on:
+  push:
+    branches: [ main, develop, master ]
+    paths:
+      - 'apps/backend/src/services/legal_summarizer.py'
+      - 'apps/backend/tests/test_summarizer_openai.py'
+  pull_request:
+    branches: [ main, develop, master ]
+    paths:
+      - 'apps/backend/src/services/legal_summarizer.py'
+      - 'apps/backend/tests/test_summarizer_openai.py'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.7.1
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: |
+        cd apps/backend
+        pip install -e .
+        pip install pytest pytest-asyncio pytest-cov
+      
+    - name: Run OpenAI integration tests (only if API key is available)
+      run: |
+        cd apps/backend
+        if [ ! -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+          # Set environment variable for tests
+          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          pytest tests/test_summarizer_openai.py -v
+        else
+          echo "OPENAI_API_KEY not provided, skipping OpenAI integration tests"
+          # Exit successfully even without running tests
+          exit 0
+        fi

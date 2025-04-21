@@ -1,0 +1,18 @@
+# Ignore large frontend directories
+apps/frontend/
+apps/pwa/
+
+# Common directories to ignore
+**/node_modules/
+**/.next/
+**/build/
+**/dist/
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+**/venv/
+
+# Other unnecessary directories
+.git/
+.github/
+.vscode/

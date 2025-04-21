@@ -1,0 +1,60 @@
+name: Deploy Backend API with OpenAI Integration
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'apps/backend/**'
+  workflow_dispatch:  # Manual trigger option
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Install dependencies
+      run: |
+        cd apps/backend
+        pip install -e .
+        pip install pytest pytest-asyncio
+        
+    - name: Run basic tests
+      run: |
+        cd apps/backend
+        pytest tests/test_legal_summarizer.py -v
+        
+    - name: Check Railway CLI credentials
+      id: check_secrets
+      run: |
+        if [[ -n "${{ secrets.RAILWAY_TOKEN }}" ]]; then
+          echo "has_secrets=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_secrets=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Deploy to Railway
+      if: steps.check_secrets.outputs.has_secrets == 'true'
+      uses: bervProject/railway-deploy@main
+      with:
+        railway_token: ${{ secrets.RAILWAY_TOKEN }}
+        service: jurisai-backend
+        
+    - name: Deployment Status
+      if: steps.check_secrets.outputs.has_secrets == 'true'
+      run: |
+        echo "Backend API with OpenAI integration deployed successfully to Railway!"
+        echo "Make sure to configure the OPENAI_API_KEY in Railway environment variables."
+      
+    - name: Skip Deployment (No Credentials)
+      if: steps.check_secrets.outputs.has_secrets == 'false'
+      run: |
+        echo "Deployment skipped: No Railway token provided."
+        echo "To enable automatic deployment, add RAILWAY_TOKEN to repository secrets."

@@ -1,0 +1,43 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
+nixpacksConfigPath = "apps/backend"
+
+[deploy]
+startCommand = "./scripts/startup.sh"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+healthcheckPath = "/health"
+healthcheckTimeout = 10
+rootDirectory = "apps/backend"
+
+# Define service dependencies
+[services]
+postgres = { image = "postgres:14", internal_port = 5432 }
+redis = { image = "redis:7", internal_port = 6379 }
+
+# Environment variables
+[variables]
+DATABASE_URL = "${POSTGRES_CONNECTION_URL}"
+REDIS_URL = "${REDIS_CONNECTION_URL}"
+API_HOST = "0.0.0.0"
+PORT = "8080"
+DEBUG = "false"
+TEST_MODE = "false"
+JWT_SECRET_KEY = "${JWT_SECRET}"  # This should be set in Railway Secrets
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = "30"
+LOG_LEVEL = "INFO"
+SKIP_MIGRATIONS = "true"  # Enable to bypass migrations for initial deployment
+
+# AI Model Settings - Using lightweight models
+EMBEDDINGS_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+USE_LIGHTWEIGHT_MODELS = "true"
+MAX_MODEL_SIZE_GB = "3"
+MODEL_CACHE_DIR = "./models"
+
+# Configure resource requirements for the service
+[resources]
+cpu = "1x"
+memory = "2GB"
+disk_size = "10GB"

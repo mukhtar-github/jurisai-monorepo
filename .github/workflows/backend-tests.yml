@@ -1,0 +1,49 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/backend/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.7.1
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: |
+        cd apps/backend
+        poetry install
+      
+    - name: Run tests
+      run: |
+        cd apps/backend
+        # Set TEST_MODE environment variable
+        export TEST_MODE=true
+        # Run the tests with coverage
+        poetry run python -m pytest tests/ --cov=src --cov-report=xml
+      
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./apps/backend/coverage.xml
+        fail_ci_if_error: false

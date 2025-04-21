@@ -1,0 +1,47 @@
+# JurisAI Backend Environment Variables
+# --------------------------------------
+# INSTRUCTIONS:
+# 1. For local development: Copy this file to .env.local
+# 2. For production: These variables are already set in Railway dashboard
+# 3. Never commit actual .env files containing secrets to Git
+
+# ===== DATABASE CONFIGURATION =====
+# PostgreSQL connection string
+DATABASE_URL=postgresql://postgres:password@localhost:5432/jurisai
+
+# ===== REDIS CONFIGURATION =====
+# Redis connection string (if used)
+REDIS_URL=redis://localhost:6379/0
+
+# ===== OPENAI INTEGRATION =====
+# Your OpenAI API key (keep this secure!)
+OPENAI_API_KEY=your_openai_api_key_here
+# Model to use for summarization (gpt-3.5-turbo is good for testing, gpt-4 for production)
+OPENAI_MODEL_NAME=gpt-3.5-turbo
+# Maximum tokens to generate per API call
+OPENAI_MAX_TOKENS=1000
+
+# ===== SECURITY =====
+# Secret key for JWT token generation (use a strong random value in production)
+SECRET_KEY=your_secret_key_here
+# JWT token expiration in minutes
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# ===== CORS SETTINGS =====
+# Frontend URL for CORS configuration (comma-separated list for multiple origins)
+FRONTEND_URL=http://localhost:3000
+# Allow credentials for CORS requests (true/false)
+CORS_ALLOW_CREDENTIALS=true
+
+# ===== SERVER CONFIGURATION =====
+# Port to run the server on
+PORT=8000
+# Debug mode (set to False in production)
+DEBUG=True
+# Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+LOG_LEVEL=INFO
+
+# ===== FEATURE FLAGS =====
+# Enable/disable experimental features
+ENABLE_BATCH_PROCESSING=false
+ENABLE_DOCUMENT_COMPARISON=false
