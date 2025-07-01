@@ -1,5 +1,5 @@
 """
-Health check routes for the JurisAI API.
+Health check routes for the JurisAI API with blue-green deployment support.
 """
 
 import logging
@@ -8,10 +8,11 @@ import time
 from typing import Any, Dict
 
 import psutil
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, Response
 from sqlalchemy.orm import Session
 
 from src.core.database import get_db
+from src.core.health import health_checker
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -22,12 +23,44 @@ START_TIME = time.time()
 @router.get("/")
 async def health_check() -> Dict[str, Any]:
     """
-    Basic health check endpoint.
+    Basic health check endpoint for blue-green deployments.
 
     Returns:
         Dict[str, Any]: Health status
     """
     return {"status": "healthy", "uptime": f"{int(time.time() - START_TIME)} seconds"}
+
+
+@router.get("/ready")
+async def readiness_check(response: Response) -> Dict[str, Any]:
+    """
+    Readiness check for blue-green traffic routing.
+    
+    Returns:
+        Dict[str, Any]: Readiness status
+    """
+    readiness_status = await health_checker.get_readiness_status()
+    
+    if not readiness_status["ready"]:
+        response.status_code = 503
+        
+    return readiness_status
+
+
+@router.get("/live")
+async def liveness_check(response: Response) -> Dict[str, Any]:
+    """
+    Liveness check for blue-green deployment monitoring.
+    
+    Returns:
+        Dict[str, Any]: Liveness status
+    """
+    health_status = await health_checker.get_comprehensive_health()
+    
+    if health_status["status"] == "unhealthy":
+        response.status_code = 503
+        
+    return health_status
 
 
 @router.get("/system")
@@ -133,7 +166,7 @@ async def full_health_check(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Comprehensive health check of all system components.
+    Comprehensive health check of all system components for blue-green deployments.
 
     Args:
         db (Session): Database session
@@ -141,29 +174,19 @@ async def full_health_check(
     Returns:
         Dict[str, Any]: Complete system health status
     """
-    # Get basic health
-    basic_health = await health_check()
+    # Use the enhanced health checker
+    comprehensive_health = await health_checker.get_comprehensive_health()
     
-    # Get system info
+    # Get additional legacy info for backward compatibility
     sys_info = await system_info()
-    
-    # Get database status
     db_status = await database_check(db)
-    
-    # Get AI models status
     ai_status = await ai_models_check()
     
-    # Determine overall status
-    overall_status = "healthy"
-    if db_status["status"] == "error":
-        overall_status = "degraded"
+    # Merge with comprehensive health data
+    comprehensive_health.update({
+        "legacy_system": sys_info,
+        "legacy_database": db_status,
+        "legacy_ai_models": ai_status
+    })
     
-    return {
-        "status": overall_status,
-        "timestamp": time.time(),
-        "uptime": basic_health["uptime"],
-        "database": db_status,
-        "system": sys_info,
-        "ai_models": ai_status,
-        "version": "1.0.0"  # You might want to get this from a config file
-    }
+    return comprehensive_health

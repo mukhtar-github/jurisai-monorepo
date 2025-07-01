@@ -1,0 +1,85 @@
+# Blue-Green Deployment Configuration for Railway
+# This configuration implements proper blue-green deployment strategy
+
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
+nixpacksConfigPath = "apps/backend"
+
+[deploy]
+startCommand = "./scripts/blue-green-startup.sh"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+healthcheckInterval = 10
+rootDirectory = "apps/backend"
+
+# Blue-Green Deployment Strategy
+[deployment]
+strategy = "blue_green"
+preDeploymentHealthCheck = true
+trafficSwitchDelay = 60  # seconds to wait before switching traffic
+rollbackOnFailure = true
+maxUnavailableInstances = 0  # Zero-downtime requirement
+
+# Health Check Configuration
+[healthcheck]
+path = "/health"
+port = 8080
+initialDelaySeconds = 30
+periodSeconds = 10
+timeoutSeconds = 5
+successThreshold = 2
+failureThreshold = 3
+
+# Service Dependencies
+[services]
+postgres = { image = "postgres:14", internal_port = 5432 }
+redis = { image = "redis:7", internal_port = 6379 }
+
+# Environment Variables
+[variables]
+DATABASE_URL = "${POSTGRES_CONNECTION_URL}"
+REDIS_URL = "${REDIS_CONNECTION_URL}"
+API_HOST = "0.0.0.0"
+PORT = "8080"
+DEBUG = "false"
+TEST_MODE = "false"
+JWT_SECRET_KEY = "${JWT_SECRET}"
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = "30"
+LOG_LEVEL = "INFO"
+
+# Blue-Green Environment Variables
+ENVIRONMENT_COLOR = "${RAILWAY_ENVIRONMENT_COLOR}"  # 'blue' or 'green'
+ENABLE_GRACEFUL_SHUTDOWN = "true"
+SHUTDOWN_TIMEOUT = "30"
+READINESS_PROBE_ENABLED = "true"
+
+# AI Model Settings - Optimized for blue-green
+EMBEDDINGS_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+USE_LIGHTWEIGHT_MODELS = "true"
+MAX_MODEL_SIZE_GB = "2"
+MODEL_CACHE_DIR = "./models"
+MODEL_WARM_UP_ENABLED = "true"
+
+# Resource Configuration
+[resources]
+cpu = "2x"  # Increased for blue-green
+memory = "4GB"  # Increased for parallel environments
+disk_size = "20GB"  # Increased for model caching
+
+# Scaling Configuration
+[scaling]
+minInstances = 2  # Always maintain 2 instances for blue-green
+maxInstances = 4
+targetCPUUtilization = 70
+targetMemoryUtilization = 80
+
+# Monitoring and Observability
+[monitoring]
+enableMetrics = true
+enableTracing = true
+logLevel = "INFO"
+metricsPath = "/metrics"
