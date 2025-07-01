@@ -35,6 +35,7 @@ class LegalDocument(Base):
     key_terms = relationship(
         "DocumentKeyTerm", back_populates="document", cascade="all, delete-orphan"
     )
+    agent_tasks = relationship("AgentTask", back_populates="document")
 
     # Relationships can be added here when we implement users
     # owner_id = Column(Integer, ForeignKey("users.id"))

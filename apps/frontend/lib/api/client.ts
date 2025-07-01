@@ -29,7 +29,7 @@ declare module 'axios' {
 
 // API configuration
 const isDevelopment = process.env.NODE_ENV === 'development';
-// Default to localhost for development, and assume Railway URL format for production
+// Default to localhost for development, and use Railway URL for production
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 
   (isDevelopment ? 'http://localhost:8000' : 'https://jurisai-monorepo-production.up.railway.app');
 const TIMEOUT = 30000; // 30 seconds

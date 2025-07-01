@@ -2,15 +2,35 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install -r requirements.txt",
+    "buildCommand": "pip install -r requirements.txt && alembic upgrade head",
     "nixpacksConfigPath": "apps/backend"
   },
   "deploy": {
-    "startCommand": "./scripts/startup.sh",
+    "startCommand": "gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app --host 0.0.0.0 --port $PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3,
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 10,
+    "healthcheckTimeout": 180,
     "rootDirectory": "apps/backend"
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "RAILWAY_ENVIRONMENT": "production",
+        "LOG_LEVEL": "INFO",
+        "DEBUG": "false",
+        "CORS_ALLOW_CREDENTIALS": "true",
+        "FRONTEND_URL": "https://jurisai-monorepo-it54.vercel.app"
+      }
+    },
+    "staging": {
+      "variables": {
+        "RAILWAY_ENVIRONMENT": "staging", 
+        "LOG_LEVEL": "DEBUG",
+        "DEBUG": "true",
+        "CORS_ALLOW_CREDENTIALS": "true",
+        "FRONTEND_URL": "https://jurisai-monorepo-it54.vercel.app"
+      }
+    }
   }
 }

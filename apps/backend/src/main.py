@@ -23,6 +23,8 @@ from src.routes.roles import router as roles_router
 from src.routes.permissions import router as permissions_router
 from src.routes.system import router as system_router
 from src.routes.admin import router as admin_router
+from src.routes.feature_flags import router as feature_flags_router
+from src.routes.agents import router as agents_router
 
 # Configure logging
 logging.basicConfig(
@@ -34,16 +36,19 @@ logger = logging.getLogger(__name__)
 # Define CORS settings
 origins = [
     "http://localhost",
-    "http://localhost:3000",  # Frontend
-    "http://localhost:8000",  # Backend
+    "http://localhost:3000",  # Frontend development
+    "http://localhost:8000",  # Backend development
     "http://localhost:8080",  # Alternative frontend
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8000",
     "http://127.0.0.1:8080",
+    "https://jurisai-monorepo-it54.vercel.app",  # Production frontend
 ]
 
+# Add additional frontend URLs from environment
 if os.getenv("FRONTEND_URL"):
-    origins.append(os.getenv("FRONTEND_URL"))
+    frontend_urls = os.getenv("FRONTEND_URL").split(",")
+    origins.extend([url.strip() for url in frontend_urls])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,12 +66,13 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down JurisAI API")
 
 
-# Initialize FastAPI app
+# Initialize FastAPI app with Railway redirect fix
 app = FastAPI(
     title="JurisAI API",
     description="Legal document management and analysis API",
     version="0.1.0",
     lifespan=lifespan,
+    redirect_slashes=False  # Fix Railway health check redirects
 )
 
 # Add middlewares
@@ -87,6 +93,8 @@ app.include_router(documents)
 # app.include_router(search)  # Not essential for first MVP
 app.include_router(summarization)
 app.include_router(health)
+app.include_router(feature_flags_router)  # Feature flags for agent system
+app.include_router(agents_router)  # AI agent routes
 # app.include_router(auth)  # Will be added in future iterations
 # app.include_router(roles_router)  # Not needed for pilot
 # app.include_router(permissions_router)  # Not needed for pilot
@@ -126,6 +134,28 @@ async def read_root():
         "status": "active",
         "docs_url": "/docs",
     }
+
+
+# Railway-optimized health check endpoints
+@app.get("/health")
+@app.get("/health/")
+async def railway_health_check():
+    """Simple health check for Railway deployment."""
+    return {"status": "healthy", "service": "jurisai-api"}
+
+
+@app.get("/healthz")
+@app.get("/healthz/")  
+async def kubernetes_style_health():
+    """Kubernetes-style health check."""
+    return {"status": "OK"}
+
+
+@app.get("/ready")
+@app.get("/ready/")
+async def readiness_check():
+    """Readiness check for Railway."""
+    return {"status": "ready", "service": "jurisai-api"}
 
 
 if __name__ == "__main__":

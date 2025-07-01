@@ -27,6 +27,9 @@ class User(Base):
     # Add relationships for RBAC
     roles = relationship("Role", secondary=user_role, back_populates="users")
     
+    # Add relationships for agent tasks
+    agent_tasks = relationship("AgentTask", back_populates="user")
+    
     # Add relationships if needed, for example:
     # documents = relationship("LegalDocument", back_populates="owner")
     

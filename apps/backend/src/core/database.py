@@ -71,6 +71,10 @@ def create_tables():
     # Import models to ensure they are registered with the Base class
     # These imports need to be here to avoid circular import issues
     from src.models.document import DocumentEntity, DocumentKeyTerm, LegalDocument
+    from src.models.user import User
+    from src.models.role import Role
+    from src.models.permission import Permission
+    from src.models.feature_flag import FeatureFlag
 
     # Create tables
     Base.metadata.create_all(bind=engine)

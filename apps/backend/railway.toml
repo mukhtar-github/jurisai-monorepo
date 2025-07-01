@@ -1,0 +1,50 @@
+# Railway Configuration for JurisAI Backend
+# ==========================================
+
+[build]
+builder = "nixpacks"
+buildCommand = "poetry install --only=main && poetry run alembic upgrade head"
+
+[deploy]
+startCommand = "poetry run gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Service Configuration
+[services.backend]
+source = "apps/backend"
+
+# Database Service (PostgreSQL)
+[services.database]
+image = "postgres:15"
+volumes = ["postgres_data:/var/lib/postgresql/data"]
+
+# Redis Service
+[services.redis]
+image = "redis:7-alpine"
+volumes = ["redis_data:/data"]
+
+# Environment Variables (these will be set in Railway dashboard)
+[deploy.env]
+# Database
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+REDIS_URL = "${{Redis.REDIS_URL}}"
+
+# Application
+PORT = "${{PORT}}"
+RAILWAY_ENVIRONMENT = "${{RAILWAY_ENVIRONMENT}}"
+FRONTEND_URL = "https://jurisai-frontend.vercel.app"
+
+# Security
+SECRET_KEY = "${{SECRET_KEY}}"
+CORS_ALLOW_CREDENTIALS = "true"
+
+# Logging
+LOG_LEVEL = "INFO"
+DEBUG = "false"
+
+# Features
+ENABLE_BATCH_PROCESSING = "true"
+ENABLE_DOCUMENT_COMPARISON = "true"
