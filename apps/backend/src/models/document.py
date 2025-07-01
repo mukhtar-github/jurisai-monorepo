@@ -36,9 +36,9 @@ class LegalDocument(Base):
         "DocumentKeyTerm", back_populates="document", cascade="all, delete-orphan"
     )
 
-    # Relationships can be added here when we implement users
-    # owner_id = Column(Integer, ForeignKey("users.id"))
-    # owner = relationship("User", back_populates="documents")
+    # User ownership for documents
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    owner = relationship("User", back_populates="documents")
 
 
 class DocumentEntity(Base):

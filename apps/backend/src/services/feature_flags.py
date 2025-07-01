@@ -41,7 +41,7 @@ class FeatureFlagService:
         value = os.getenv(key, str(default)).lower()
         return value in ('true', '1', 'yes', 'on')
     
-    def is_enabled(self, flag_key: str) -> bool:
+    def is_enabled(self, flag_key: str, user_id: Optional[str] = None) -> bool:
         """Check if a feature flag is enabled."""
         try:
             # First check cache (environment variables)
@@ -54,6 +54,8 @@ class FeatureFlagService:
             ).first()
             
             if flag:
+                # For user-specific feature flags, could add user-based logic here
+                # For now, return global flag status
                 self._cache[flag_key] = flag.is_enabled
                 return flag.is_enabled
             
@@ -63,6 +65,10 @@ class FeatureFlagService:
         except Exception as e:
             logger.warning(f"Error checking feature flag {flag_key}: {e}")
             return False
+    
+    async def is_enabled_async(self, flag_key: str, user_id: Optional[str] = None) -> bool:
+        """Async version of is_enabled for use in async contexts."""
+        return self.is_enabled(flag_key, user_id)
     
     def get_config(self, flag_key: str) -> Dict[str, Any]:
         """Get configuration for a feature flag."""

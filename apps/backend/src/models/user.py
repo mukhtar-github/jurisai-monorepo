@@ -27,8 +27,8 @@ class User(Base):
     # Add relationships for RBAC
     roles = relationship("Role", secondary=user_role, back_populates="users")
     
-    # Add relationships if needed, for example:
-    # documents = relationship("LegalDocument", back_populates="owner")
+    # Document ownership relationship
+    documents = relationship("LegalDocument", back_populates="owner")
     
     def has_permission(self, resource, action):
         """Check if user has a specific permission."""
