@@ -18,6 +18,7 @@ export interface LegalDocument {
   has_entities?: boolean;
   has_key_terms?: boolean;
   has_summary?: boolean;
+  owner_id?: number;
 }
 
 export interface DocumentEntity {
@@ -377,4 +378,92 @@ export interface SystemFeaturesResponse {
       version: string | null;
     };
   };
+}
+
+// Agent Task types
+export interface AgentTask {
+  task_id: string;
+  agent_type: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  document_id?: number;
+  user_id?: number;
+  parameters?: Record<string, any>;
+  results?: Record<string, any>;
+  confidence?: number;
+  error_message?: string;
+  created_at?: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+export interface AgentTaskStatus {
+  task_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  agent_type: string;
+  result?: Record<string, any>;
+  confidence?: number;
+  processing_time_ms?: number;
+  created_at?: string;
+  completed_at?: string;
+}
+
+export interface DocumentAnalysisRequest {
+  parameters?: {
+    max_summary_length?: number;
+    focus_area?: string;
+    preserve_citations?: boolean;
+    [key: string]: any;
+  };
+}
+
+export interface DocumentAnalysisResponse {
+  task_id?: string;
+  status: 'processing' | 'completed';
+  agent_enabled: boolean;
+  message: string;
+  result?: {
+    summary?: string;
+    document_type?: string;
+    word_count?: number;
+    analysis_type?: string;
+    [key: string]: any;
+  };
+}
+
+export interface AgentTaskListParams {
+  status_filter?: string;
+  agent_type?: string;
+  limit?: number;
+}
+
+export interface FeatureFlag {
+  id: number;
+  key: string;
+  name: string;
+  description?: string;
+  is_enabled: boolean;
+  config?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+}
+
+export interface AgentsStatusResponse {
+  status: string;
+  data: {
+    [agentType: string]: {
+      enabled: boolean;
+      description: string;
+      features: Record<string, boolean>;
+    };
+  };
+}
+
+export interface UserDocument {
+  id: number;
+  title: string;
+  document_type?: string;
+  created_at?: string;
+  word_count?: number;
+  has_summary: boolean;
 }
