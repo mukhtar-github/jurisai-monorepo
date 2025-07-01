@@ -6,7 +6,7 @@
     "nixpacksConfigPath": "apps/backend"
   },
   "deploy": {
-    "startCommand": "./scripts/startup.sh",
+    "startCommand": "scripts/startup.sh",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3,
     "healthcheckPath": "/health",
