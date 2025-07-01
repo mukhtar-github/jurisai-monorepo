@@ -23,6 +23,8 @@ from src.routes.roles import router as roles_router
 from src.routes.permissions import router as permissions_router
 from src.routes.system import router as system_router
 from src.routes.admin import router as admin_router
+from src.routes.feature_flags import router as feature_flags_router
+from src.routes.agents import router as agents_router
 
 # Configure logging
 logging.basicConfig(
@@ -87,6 +89,8 @@ app.include_router(documents)
 # app.include_router(search)  # Not essential for first MVP
 app.include_router(summarization)
 app.include_router(health)
+app.include_router(feature_flags_router)  # Feature flags for agent system
+app.include_router(agents_router)  # AI agents system
 # app.include_router(auth)  # Will be added in future iterations
 # app.include_router(roles_router)  # Not needed for pilot
 # app.include_router(permissions_router)  # Not needed for pilot
